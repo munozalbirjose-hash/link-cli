@@ -16,6 +16,7 @@ import { createSpendRequestCli } from './commands/spend-request';
 import { createTransactionsCli } from './commands/transactions';
 import { createUcpCli } from './commands/ucp';
 import { createUserInfoCli } from './commands/user-info';
+import { createTelemetry } from './telemetry/client';
 import { detectAIAgent } from './utils/ai-agent';
 import { buildMcpCommand } from './utils/package-runner';
 import { ResourceFactory } from './utils/resource-factory';
@@ -31,6 +32,7 @@ declare const __CLI_NAME__: string;
 const cliVersion = __CLI_VERSION__;
 const cliName = __CLI_NAME__;
 const agent = detectAIAgent(process.env);
+const telemetry = createTelemetry({ cliVersion, aiAgent: agent });
 const defaultHeaders = {
   'User-Agent': `link-cli/${cliVersion}${agent ? ` AIAgent/${agent}` : ''}`,
 };
@@ -64,6 +66,7 @@ const factory = new ResourceFactory({
   envAccessToken,
   envRefreshToken,
   noRefresh,
+  telemetry,
 });
 const authRepo = factory.createAuthResource();
 const spendRequestRepo = factory.createSpendRequestResource();
@@ -204,6 +207,16 @@ cli.command(
 );
 cli.command(createServeCli(cli));
 
-cli.serve();
+let requestedExitCode: number | undefined;
+try {
+  await cli.serve(undefined, {
+    exit(code) {
+      requestedExitCode = code;
+    },
+  });
+} finally {
+  await telemetry.flush();
+}
+if (requestedExitCode !== undefined) process.exit(requestedExitCode);
 
 export default cli;

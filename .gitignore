@@ -8,6 +8,7 @@ dist/
 CLAUDE.local.md
 docs/*
 !docs/link-cli-skill.md
+!docs/api-request-telemetry.md
 packages/cli/README.md
 .claude/
 .codex/

@@ -641,6 +641,34 @@ In MCP/agent mode, pass `metadata` as a structured `{ key: value }` object.
 | `LINK_API_BASE_URL` | Override the API base URL |
 | `LINK_AUTH_BASE_URL` | Override the auth base URL |
 | `LINK_HTTP_PROXY` | Route all requests through an HTTP proxy (requires `undici`) |
+| `DO_NOT_TRACK` | Disable CLI analytics when set to `1` or `true` (case-insensitive) |
+| `LINK_CLI_TELEMETRY_OPTOUT` | Disable CLI analytics when set to `1` or `true` (case-insensitive) |
+| `LINK_CLI_TELEMETRY_URL` | Override the analytics endpoint for development; an invalid URL disables analytics |
+
+### API request analytics
+
+Link CLI sends best-effort API request analytics to `https://r.stripe.com/0` by
+default, including requests with and without recognized agent attribution. Each
+completed fetch attempt to Link API or authentication endpoints produces an
+`API Request` event. Polling and retries count separately. Events contain a fixed
+operation name (or `unknown`), HTTP method, HTTP outcome, status code when
+available, CLI version, OS, architecture, a random event ID, completion timestamp,
+and a recognized agent slug when available. Missing agent attribution has no
+assigned interpretation.
+
+`success` means HTTP 200–299, `http_error` means a non-2xx response, and
+`transport_error` means fetch rejected, including connection failures, timeouts,
+and cancellation. These outcomes describe receipt of response headers; body
+parsing or later command failures do not change them. Merchant requests are not
+tracked. Payloads exclude URLs, domains, resource IDs, arguments, headers, tokens,
+payment data, request/response bodies, error messages, and stacks.
+
+Set `DO_NOT_TRACK=1` or `LINK_CLI_TELEMETRY_OPTOUT=1` to disable analytics. This
+does not change the existing `AIAgent/<slug>` suffix on API request User-Agent
+headers. Telemetry is sent in the background without retries or persistent
+storage, with at most eight simultaneous sends and a three-second request
+deadline. Normal CLI shutdown waits at most 300 ms; excess events and events
+interrupted by abrupt termination may be lost. Telemetry failures are silent.
 
 ## Integrating into agents
 

@@ -22,6 +22,8 @@ import { LinkAuthenticationError } from '../auth/errors';
 import { createAccessTokenProvider } from '../auth/session';
 import type { CliAuthStorage } from '../auth/storage';
 import type { IAuthResource } from '../auth/types';
+import type { TelemetryClient } from '../telemetry/client';
+import { createTelemetryFetch } from '../telemetry/fetch';
 import { sanitizeDeep } from './sanitize-text';
 
 /**
@@ -72,6 +74,7 @@ interface ResourceFactoryOptions {
   apiBaseUrl?: string;
   spendRequestBaseUrl?: string;
   fetch?: typeof globalThis.fetch;
+  telemetry?: TelemetryClient;
 }
 
 function createProxyFetch(
@@ -109,6 +112,7 @@ export class ResourceFactory {
   private readonly apiBaseUrl?: string;
   private readonly spendRequestBaseUrl?: string;
   private readonly fetch?: typeof globalThis.fetch;
+  private readonly telemetry?: TelemetryClient;
   private _authResource?: IAuthResource;
   private accessTokenProvider?: ReturnType<typeof createAccessTokenProvider>;
   private sdkClient?: Link;
@@ -139,6 +143,19 @@ export class ResourceFactory {
     this.fetch =
       options.fetch ??
       (proxyUrl ? createProxyFetch(globalThis.fetch, proxyUrl) : undefined);
+    this.telemetry = options.telemetry;
+    if (this.telemetry) {
+      this.fetch = createTelemetryFetch(
+        this.fetch ?? globalThis.fetch,
+        this.telemetry,
+        [
+          this.apiBaseUrl ?? 'https://api.link.com',
+          this.spendRequestBaseUrl ?? 'https://api.link.com',
+          // Identity discovery/issuance deliberately uses the fixed issuer.
+          'https://api.link.com',
+        ],
+      );
+    }
     this._authResource = options.authResource;
   }
 
@@ -171,6 +188,11 @@ export class ResourceFactory {
       new LinkAuthResource({
         verbose: this.verbose,
         defaultHeaders: this.defaultHeaders,
+        fetch: this.telemetry
+          ? createTelemetryFetch(globalThis.fetch, this.telemetry, [
+              process.env.LINK_AUTH_BASE_URL ?? 'https://login.link.com',
+            ])
+          : undefined,
       }),
     );
 

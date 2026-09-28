@@ -242,3 +242,18 @@ Rules:
 | `LINK_AUTH_BASE_URL` | Override auth base URL |
 | `LINK_HTTP_PROXY` | Route all SDK requests through an HTTP proxy (requires `undici` installed) |
 | `LINK_IDENTITY_COMMANDS` | When `1` or `true`, register the unlisted `identity` command group. Omitted from `--help`, `--llms`, and MCP otherwise. |
+| `DO_NOT_TRACK` / `LINK_CLI_TELEMETRY_OPTOUT` | Disable CLI API request analytics when either equals `1` or `true` (case-insensitive) |
+| `LINK_CLI_TELEMETRY_URL` | Override AEL destination for development; invalid values disable telemetry |
+
+## API request telemetry
+
+CLI-owned telemetry lives in `packages/cli/src/telemetry`. `ResourceFactory`
+wraps the SDK and authentication fetch implementations. Every in-scope fetch
+attempt is eligible regardless of agent attribution, including polling and
+retries. Outcomes are HTTP 2xx success, non-2xx HTTP error, or transport rejection;
+body parsing and command outcomes are outside this definition. Only literal
+operation names and explicitly allowlisted metadata are serialized. Never add
+URLs, IDs, headers, bodies, or raw errors to events. The AEL transport uses separate
+Node HTTP/HTTPS requests with unreferenced, cancellable sockets.
+CLI tests default to opt-out; recorder tests explicitly enable telemetry. See
+`docs/api-request-telemetry.md` for the implementation plan and release dependency.

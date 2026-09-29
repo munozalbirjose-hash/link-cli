@@ -657,6 +657,11 @@ asynchronous clients covering the Go SDK's API resources with Python conventions
 Authentication flows and credential persistence remain the embedding
 application's responsibility.
 
+The TypeScript SDK also exports reusable [agent tools](packages/sdk/README.md#agent-tools).
+Use the [Eve extension](packages/integrations/eve/README.md) to mount them in an
+Eve agent with a static access token or an application-provided Eve auth provider,
+plus a wallet skill.
+
 ## Onboarding and Demos
 
 Run the guided setup flow — authenticates, checks payment methods, shows the app download QR, and runs both demo flows:
@@ -674,6 +679,8 @@ link-cli demo --only-spt   # machine payment (SPT) flow only
 ```
 
 ## Development
+
+Workspace development requires Node.js 24+.
 
 ```bash
 pnpm install
@@ -714,7 +721,7 @@ pnpm biome check .
 ## Releasing
 
 This project uses [Changesets](https://github.com/changesets/changesets) to
-version and publish `@stripe/link-cli` and `@stripe/link-sdk`.
+version and publish `@stripe/link-cli`, `@stripe/link-sdk`, and `@stripe/link-integrations-eve`.
 `@stripe/link-typescript-config` is private and is not published.
 
 ### Add a changeset
@@ -744,7 +751,7 @@ To inspect the packages without publishing them:
 
 ```bash
 pnpm turbo run build
-pnpm --filter @stripe/link-cli --filter @stripe/link-sdk --filter @stripe/link-integrations-better-auth publish --dry-run --no-git-checks
+pnpm --filter @stripe/link-cli --filter @stripe/link-sdk --filter @stripe/link-integrations-better-auth --filter @stripe/link-integrations-eve publish --dry-run --no-git-checks
 ```
 
 CI runs the same publish dry-run for every pull request.

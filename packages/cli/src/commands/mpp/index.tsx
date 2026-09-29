@@ -4,6 +4,7 @@ import type {
 } from '@stripe/link-sdk';
 import { Cli, z } from 'incur';
 import type { CliAuthStorage } from '../../auth/storage';
+import { getNetworkModeError } from '../../utils/network-mode';
 import { renderInteractive } from '../../utils/render-interactive';
 import { requireAuth } from '../../utils/require-auth';
 import { shellCommand, shellQuote } from '../../utils/shell-quote';
@@ -122,6 +123,13 @@ export function createMppCli(
       const decoded = decodeStripeChallenge(wwwAuth);
       await probeResponse.body?.cancel();
       const networkId = decoded.network_id;
+      const networkModeError = getNetworkModeError(networkId, opts.test);
+      if (networkModeError) {
+        return c.error({
+          code: 'INVALID_INPUT',
+          message: networkModeError,
+        });
+      }
       const challengeAmount = decoded.request_json.amount
         ? Number(decoded.request_json.amount)
         : undefined;

@@ -8,6 +8,7 @@ import { Challenge, Credential, Method } from 'mppx';
 import { Mppx } from 'mppx/client';
 import { Methods as StripeMethods } from 'mppx/stripe';
 import { useEffect, useState } from 'react';
+import { getNetworkModeError } from '../../utils/network-mode';
 import { openUrl } from '../../utils/open-url';
 import { pollUntilApproved } from '../../utils/poll-until-approved';
 import { sanitizeDeep } from '../../utils/sanitize-text';
@@ -354,6 +355,10 @@ export async function runMppPayFullFlow(
   const approvedChallenge = getStripeChargeChallengeFromResponse(probeResponse);
   await probeResponse.body?.cancel();
   const networkId = decoded.network_id;
+  const networkModeError = getNetworkModeError(networkId, test);
+  if (networkModeError) {
+    throw new Error(networkModeError);
+  }
   const challengeAmount = decoded.request_json.amount
     ? Number(decoded.request_json.amount)
     : undefined;

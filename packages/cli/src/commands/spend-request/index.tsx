@@ -14,6 +14,7 @@ import {
   parseLineItemFlag,
   parseTotalFlag,
 } from '../../utils/line-item-parser';
+import { getNetworkModeError } from '../../utils/network-mode';
 import { pollUntil } from '../../utils/poll-until';
 import { renderInteractive } from '../../utils/render-interactive';
 import { requireAuth, requireAuthGuard } from '../../utils/require-auth';
@@ -197,6 +198,15 @@ export function createSpendRequestCli(
           message:
             'network-id can only be used when credential-type is shared_payment_token',
         });
+      }
+      if (networkId) {
+        const networkModeError = getNetworkModeError(networkId, opts.test);
+        if (networkModeError) {
+          return c.error({
+            code: 'INVALID_INPUT',
+            message: networkModeError,
+          });
+        }
       }
       if (
         !lptExecutionRequested &&

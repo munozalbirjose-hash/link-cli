@@ -450,6 +450,42 @@ describe('payWithSpt', () => {
   });
 
   it.each([
+    ['profile_test_123', false, 'Re-run with --test'],
+    ['profile_123', true, 'Remove --test'],
+  ])(
+    'rejects network ID %s with test=%s before creating a spend request',
+    async (networkId, test, expectedMessage) => {
+      const repository = approvedRepository();
+      const fetcher = vi
+        .fn()
+        .mockResolvedValueOnce(
+          challengeResponse(
+            challengeWith({ request: { ...STRIPE_REQUEST, networkId } }),
+          ),
+        );
+      vi.stubGlobal('fetch', fetcher);
+
+      await expect(
+        runMppPayFullFlow({
+          url: 'https://merchant.example/challenge',
+          method: 'GET',
+          data: undefined,
+          headers: undefined,
+          context:
+            'Buy a test item from the merchant after explicit Link approval for this machine payment request.',
+          amountOverride: 1000,
+          paymentMethodId: 'pd_test_123',
+          test,
+          repository,
+          paymentMethodsFactory: vi.fn(),
+        }),
+      ).rejects.toThrow(expectedMessage);
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([
     ['no authentication challenge', undefined],
     ['a non-Payment challenge', 'Basic realm="merchant.example"'],
     ['a malformed Payment challenge', 'Payment id="ch_002"'],

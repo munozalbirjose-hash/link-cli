@@ -536,6 +536,43 @@ describe('production mode', () => {
       expect(request.network_id).toBe('net_prod_abc');
     });
 
+    it.each([
+      [
+        'requires --test for a test network ID',
+        'profile_test_abc',
+        [],
+        'Re-run with --test',
+      ],
+      [
+        'rejects --test for a live network ID',
+        'profile_abc',
+        ['--test'],
+        'Remove --test',
+      ],
+    ])('%s', async (_name, networkId, extraArgs, expectedMessage) => {
+      const result = await runProdCli(
+        'spend-request',
+        'create',
+        '--payment-method-id',
+        'pd_prod_test',
+        '--context',
+        VALID_CONTEXT,
+        '--amount',
+        '5000',
+        '--credential-type',
+        'shared_payment_token',
+        '--network-id',
+        networkId,
+        '--no-request-approval',
+        ...extraArgs,
+        '--json',
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout + result.stderr).toContain(expectedMessage);
+      expect(requests).toHaveLength(0);
+    });
+
     it('sends Link Pay Token execution fields in HTTP POST body', async () => {
       setNextResponse(200, {
         ...BASE_REQUEST,
@@ -3077,14 +3114,18 @@ describe('production mode', () => {
       network_id: 'net_001',
     };
 
-    const WWW_AUTHENTICATE_STRIPE = [
-      'Payment id="ch_001",',
-      'realm="127.0.0.1",',
-      'method="stripe",',
-      'intent="charge",',
-      `request="${Buffer.from(JSON.stringify({ networkId: 'net_001', amount: '1000', currency: 'usd', decimals: 2, paymentMethodTypes: ['card'] })).toString('base64')}",`,
-      'expires="2099-01-01T00:00:00Z"',
-    ].join(' ');
+    function stripeChallenge(networkId: string): string {
+      return [
+        'Payment id="ch_001",',
+        'realm="127.0.0.1",',
+        'method="stripe",',
+        'intent="charge",',
+        `request="${Buffer.from(JSON.stringify({ networkId, amount: '1000', currency: 'usd', decimals: 2, paymentMethodTypes: ['card'] })).toString('base64')}",`,
+        'expires="2099-01-01T00:00:00Z"',
+      ].join(' ');
+    }
+
+    const WWW_AUTHENTICATE_STRIPE = stripeChallenge('net_001');
 
     const WWW_AUTHENTICATE_MULTI = [
       'Payment id="tempo_001",',
@@ -3429,6 +3470,44 @@ describe('production mode', () => {
       expect(result.stdout + result.stderr).toContain(
         '--amount must match the MPP challenge amount (1000)',
       );
+      expect(
+        requests.some((request) => request.url === '/spend_requests'),
+      ).toBe(false);
+    });
+
+    it.each([
+      [
+        'requires --test for a test network ID',
+        'profile_test_abc',
+        [],
+        'Re-run with --test',
+      ],
+      [
+        'rejects --test for a live network ID',
+        'profile_abc',
+        ['--test'],
+        'Remove --test',
+      ],
+    ])('%s', async (_name, networkId, extraArgs, expectedMessage) => {
+      setMerchantResponse(402, '{"error":"payment required"}', {
+        'www-authenticate': stripeChallenge(networkId),
+      });
+
+      const result = await runProdCli(
+        'mpp',
+        'pay',
+        `http://127.0.0.1:${merchantPort}/api/charge`,
+        '--context',
+        VALID_CONTEXT,
+        '--payment-method-id',
+        'pd_prod_test',
+        ...extraArgs,
+        '--json',
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout + result.stderr).toContain(expectedMessage);
+      expect(merchantRequests).toHaveLength(1);
       expect(
         requests.some((request) => request.url === '/spend_requests'),
       ).toBe(false);

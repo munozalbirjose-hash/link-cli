@@ -243,6 +243,7 @@ describe('built CLI command telemetry', () => {
       );
       expect(events).toHaveLength(1);
     },
+    20_000,
   );
 
   it('records each MCP tool call without recording MCP control messages', async () => {

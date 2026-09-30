@@ -9,7 +9,9 @@ from urllib.parse import quote
 from ._transport import Request
 from .errors import LinkSDKError
 from .models import (
+    AvailableInsightTypesPage,
     BalancesPage,
+    InsightsPage,
     LinkModel,
     PaymentMethod,
     ReportRecord,
@@ -217,9 +219,9 @@ def _query(params: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
     for key, value in params.items():
         if value is None:
             continue
-        if key == "sources":
+        if key in ("sources", "insights"):
             _validate_string_sequence(key, value)
-            query.extend(("sources[]", source) for source in value)
+            query.extend((key + "[]", item) for item in value)
         else:
             query.append((aliases.get(key, key), str(value)))
     return tuple(query)
@@ -247,6 +249,26 @@ def balances(params: Mapping[str, Any]) -> Request[BalancesPage]:
         "GET",
         "/balances",
         BalancesPage.model_validate,
+        query=_query(params),
+    )
+
+
+def insight_types(params: Mapping[str, Any]) -> Request[AvailableInsightTypesPage]:
+    return Request(
+        "list available insight types",
+        "GET",
+        "/insights/available_types",
+        AvailableInsightTypesPage.model_validate,
+        query=_query(params),
+    )
+
+
+def insights(params: Mapping[str, Any]) -> Request[InsightsPage]:
+    return Request(
+        "list insights",
+        "GET",
+        "/insights",
+        InsightsPage.model_validate,
         query=_query(params),
     )
 

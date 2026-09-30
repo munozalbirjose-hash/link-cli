@@ -43,3 +43,36 @@ ADDRESS = {
     "sorting_code": None,
     "country_code": None,
 }
+READY_INSIGHT = {
+    "status": "ready",
+    "as_of": 1790723779,
+    "id": "top_brand_by_transaction_count_per_category_t180d",
+    "description": (
+        "Top brands from shopping categories in the last 180 days based on "
+        "transaction count"
+    ),
+    "data": [
+        {
+            "label": "Top brand from Clothing and accessories shopping category",
+            "value": {
+                "type": "number_of_items",
+                "number_of_items": {"label": "J.crew", "count": 10},
+            },
+        },
+        {
+            "label": "Top brand from Department stores shopping category",
+            "value": {
+                "type": "number_of_items",
+                "number_of_items": {"label": "Nordstrom", "count": 5},
+            },
+        },
+    ],
+}
+SOURCE_REMEDIATION = {
+    "authorization_details": [
+        {
+            "type": "source",
+            "actions": ["read_link_transactions", "read_external_transactions"],
+        }
+    ]
+}

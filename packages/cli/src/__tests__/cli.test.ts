@@ -1982,6 +1982,315 @@ describe('production mode', () => {
     });
   });
 
+  const TOP_BRAND_INSIGHT = 'top_brand_by_transaction_count_per_category_t180d';
+  const TOP_BRAND_DESCRIPTION =
+    'Top brands from shopping categories in the last 180 days based on transaction count';
+  const TRANSACTION_REMEDIATION = {
+    authorization_details: [
+      {
+        type: 'source',
+        actions: ['read_link_transactions', 'read_external_transactions'],
+      },
+    ],
+  };
+  const READY_INSIGHT = {
+    status: 'ready',
+    as_of: 1790723779,
+    id: TOP_BRAND_INSIGHT,
+    description: TOP_BRAND_DESCRIPTION,
+    data: [
+      {
+        label: 'Top brand from Clothing and accessories shopping category',
+        value: {
+          type: 'number_of_items',
+          number_of_items: { label: 'J.crew', count: 10 },
+        },
+      },
+      {
+        label: 'Top brand from Department stores shopping category',
+        value: {
+          type: 'number_of_items',
+          number_of_items: { label: 'Nordstrom', count: 5 },
+        },
+      },
+    ],
+  };
+
+  describe('insights list-available-types', () => {
+    it('GETs available insight types and returns the response unchanged', async () => {
+      const page = {
+        data: [
+          {
+            id: TOP_BRAND_INSIGHT,
+            description: TOP_BRAND_DESCRIPTION,
+            authorization_remediation: TRANSACTION_REMEDIATION,
+            future_field: { nested: true },
+          },
+        ],
+        has_more: false,
+      };
+      setResponseForUrl('/insights/available_types', 200, page);
+
+      const result = await runProdCli(
+        'insights',
+        'list-available-types',
+        '--json',
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(lastRequest.method).toBe('GET');
+      expect(lastRequest.url).toBe('/insights/available_types');
+      expect(lastRequest.headers.authorization).toBe(
+        'Bearer prod_test_access_token',
+      );
+      expect(parseJson(result.stdout)).toEqual(page);
+    });
+
+    it('forwards pagination flags into the query string', async () => {
+      setNextResponse(200, { data: [], has_more: false });
+
+      const result = await runProdCli(
+        'insights',
+        'list-available-types',
+        '--limit',
+        '25',
+        '--starting-after',
+        TOP_BRAND_INSIGHT,
+        '--json',
+      );
+
+      expect(result.exitCode).toBe(0);
+      const url = new URL(lastRequest.url, 'http://localhost');
+      expect(url.pathname).toBe('/insights/available_types');
+      expect(url.searchParams.get('limit')).toBe('25');
+      expect(url.searchParams.get('starting_after')).toBe(TOP_BRAND_INSIGHT);
+    });
+
+    it('rejects an out-of-range limit before hitting the API', async () => {
+      const result = await runProdCli(
+        'insights',
+        'list-available-types',
+        '--limit',
+        '101',
+        '--json',
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(
+        requests.find((r) => r.url.startsWith('/insights')),
+      ).toBeUndefined();
+    });
+
+    it('rejects unauthenticated requests before hitting the API', async () => {
+      storage.clearTokens();
+
+      const result = await runProdCli(
+        'insights',
+        'list-available-types',
+        '--json',
+      );
+
+      expect(result.exitCode).toBe(1);
+      const output = parseJson(result.stdout) as Record<string, unknown>;
+      expect(output.code).toBe('NOT_AUTHENTICATED');
+      expect(
+        requests.find((r) => r.url.startsWith('/insights')),
+      ).toBeUndefined();
+    });
+  });
+
+  describe('insights list', () => {
+    it('GETs insight results and returns the response unchanged', async () => {
+      const page = { data: [READY_INSIGHT], has_more: false };
+      setResponseForUrl('/insights', 200, page);
+
+      const result = await runProdCli('insights', 'list', '--json');
+
+      expect(result.exitCode).toBe(0);
+      expect(lastRequest.method).toBe('GET');
+      expect(lastRequest.url).toBe('/insights');
+      expect(lastRequest.headers.authorization).toBe(
+        'Bearer prod_test_access_token',
+      );
+      expect(parseJson(result.stdout)).toEqual(page);
+    });
+
+    it('maps repeated --insight flags and pagination into the query string', async () => {
+      setNextResponse(200, { data: [], has_more: false });
+
+      const result = await runProdCli(
+        'insights',
+        'list',
+        '--insight',
+        TOP_BRAND_INSIGHT,
+        '--insight',
+        'future_insight',
+        '--limit',
+        '2',
+        '--starting-after',
+        'insight_cursor',
+        '--json',
+      );
+
+      expect(result.exitCode).toBe(0);
+      const url = new URL(lastRequest.url, 'http://localhost');
+      expect(url.pathname).toBe('/insights');
+      expect(url.searchParams.getAll('insights[]')).toEqual([
+        TOP_BRAND_INSIGHT,
+        'future_insight',
+      ]);
+      expect(url.searchParams.get('limit')).toBe('2');
+      expect(url.searchParams.get('starting_after')).toBe('insight_cursor');
+    });
+
+    it('distinguishes missing permissions from genuinely empty results', async () => {
+      const page = {
+        data: [
+          {
+            status: 'no_data',
+            as_of: 1790723779,
+            id: TOP_BRAND_INSIGHT,
+            description: TOP_BRAND_DESCRIPTION,
+            error_code: 'missing_permissions',
+            error_message:
+              'Grant transaction access to a Link payment detail to compute this insight.',
+            authorization_remediation: TRANSACTION_REMEDIATION,
+            data: [],
+          },
+          {
+            status: 'no_data',
+            as_of: 1790723779,
+            id: 'empty_insight',
+            description: 'An insight with no qualifying activity',
+            data: [],
+          },
+        ],
+        has_more: false,
+      };
+      setResponseForUrl('/insights', 200, page);
+
+      const result = await runProdCli('insights', 'list', '--json');
+
+      expect(result.exitCode).toBe(0);
+      const output = parseJson(result.stdout) as typeof page;
+      expect(output).toEqual(page);
+      expect(output.data[0]?.error_code).toBe('missing_permissions');
+      expect(output.data[0]?.authorization_remediation).toEqual(
+        TRANSACTION_REMEDIATION,
+      );
+      expect(output.data[1]).not.toHaveProperty('error_code');
+      expect(output.data[1]).not.toHaveProperty('authorization_remediation');
+    });
+
+    it('preserves pending results and unknown value types', async () => {
+      const page = {
+        data: [
+          { status: 'pending', id: 'pending_insight', description: 'Pending' },
+          {
+            ...READY_INSIGHT,
+            id: 'future_insight',
+            data: [
+              {
+                label: 'Monthly volume',
+                value: {
+                  type: 'payment_volume',
+                  payment_volume: { amount: 1234, currency: 'usd' },
+                },
+              },
+            ],
+          },
+        ],
+        has_more: true,
+      };
+      setResponseForUrl('/insights', 200, page);
+
+      const result = await runProdCli('insights', 'list', '--json');
+
+      expect(result.exitCode).toBe(0);
+      expect(parseJson(result.stdout)).toEqual(page);
+    });
+
+    it('fails on the older response contract instead of falling back', async () => {
+      setResponseForUrl('/insights', 200, {
+        insights: [{ type: 'top_brand', value: 'Whole Foods' }],
+      });
+
+      const result = await runProdCli('insights', 'list', '--json');
+
+      expect(result.exitCode).toBe(1);
+      const output = parseJson(result.stdout) as Record<string, unknown>;
+      expect(String(output.message)).toMatch(/invalid response/i);
+    });
+
+    it('surfaces API errors as structured errors', async () => {
+      setResponseForUrl('/insights', 500, {
+        error: { message: 'insights unavailable' },
+      });
+
+      const result = await runProdCli('insights', 'list', '--json');
+
+      expect(result.exitCode).toBe(1);
+      const output = parseJson(result.stdout) as Record<string, unknown>;
+      expect(String(output.message)).toContain(
+        'Failed to list insights (500): insights unavailable',
+      );
+    });
+
+    it('strips terminal escape sequences from insight strings', async () => {
+      setResponseForUrl('/insights', 200, {
+        data: [
+          {
+            ...READY_INSIGHT,
+            description: '\x1b[2JSpoofed\rdescription',
+            error_message: '\x1b]8;;https://evil.example\x07click\x1b]8;;\x07',
+            data: [
+              {
+                label: '\x1b[31mRed\x1b[0m label',
+                value: {
+                  type: 'number_of_items',
+                  number_of_items: { label: '\x1b[2JJ.crew\r', count: 4 },
+                },
+              },
+            ],
+          },
+        ],
+        has_more: false,
+      });
+
+      const result = await runProdCli('insights', 'list', '--format', 'yaml');
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).not.toContain('\x1b');
+      expect(result.stdout).not.toContain('\x07');
+      expect(result.stdout).toContain('Red label');
+      expect(result.stdout).toContain('J.crew');
+      expect(result.stdout).toContain('Spoofeddescription');
+    });
+
+    it('rejects unauthenticated requests before hitting the API', async () => {
+      storage.clearTokens();
+
+      const result = await runProdCli('insights', 'list', '--json');
+
+      expect(result.exitCode).toBe(1);
+      const output = parseJson(result.stdout) as Record<string, unknown>;
+      expect(output.code).toBe('NOT_AUTHENTICATED');
+      expect(
+        requests.find((r) => r.url.startsWith('/insights')),
+      ).toBeUndefined();
+    });
+
+    it('registers both insights commands', async () => {
+      const root = await runProdCli('--help');
+      const group = await runProdCli('insights', '--help');
+
+      expect(root.exitCode).toBe(0);
+      expect(root.stdout + root.stderr).toContain('insights');
+      expect(group.stdout + group.stderr).toContain('list-available-types');
+      expect(group.stdout + group.stderr).toContain('list');
+    });
+  });
+
   const SAMPLE_SOURCE = {
     id: 'csmrpd_001',
     name: 'Checking 1234',

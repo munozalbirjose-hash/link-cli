@@ -108,6 +108,21 @@ type ListBalancesParams struct {
 	EndingBefore  *string  `json:"ending_before,omitempty"`
 }
 
+// ListAvailableInsightTypesParams paginates available insight types. The
+// server defaults Limit to 10.
+type ListAvailableInsightTypesParams struct {
+	Limit         *int64  `json:"limit,omitempty"`
+	StartingAfter *string `json:"starting_after,omitempty"`
+}
+
+// ListInsightsParams selects and paginates insights. Omit Insights to return
+// every available insight. The server defaults Limit to 10.
+type ListInsightsParams struct {
+	Insights      []string `json:"insights,omitempty"`
+	Limit         *int64   `json:"limit,omitempty"`
+	StartingAfter *string  `json:"starting_after,omitempty"`
+}
+
 // ReportOutcome is the result of an agent attempt.
 type ReportOutcome string
 

@@ -481,6 +481,110 @@ type BalancesPage struct {
 	AdditionalFields map[string]any `json:"-"`
 }
 
+// AuthorizationDetail is an OAuth rich authorization request entry, such as
+// Type "source" with Actions "read_link_transactions". AdditionalFields
+// preserves forward-compatible response properties not yet modeled by the SDK.
+type AuthorizationDetail struct {
+	Type             string         `json:"type"`
+	Actions          []string       `json:"actions,omitempty"`
+	AdditionalFields map[string]any `json:"-"`
+}
+
+// AuthorizationRemediation describes additional access the current grant
+// needs before an insight can be read.
+type AuthorizationRemediation struct {
+	Scope                []string              `json:"scope,omitempty"`
+	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
+	AdditionalFields     map[string]any        `json:"-"`
+}
+
+// AvailableInsightType describes an insight the user can request.
+// AuthorizationRemediation is nil unless more authorization is known to be
+// required.
+type AvailableInsightType struct {
+	ID                       string                    `json:"id"`
+	Description              string                    `json:"description"`
+	AuthorizationRemediation *AuthorizationRemediation `json:"authorization_remediation,omitempty"`
+	AdditionalFields         map[string]any            `json:"-"`
+}
+
+// AvailableInsightTypesPage is a page of available insight types.
+type AvailableInsightTypesPage struct {
+	Data             []AvailableInsightType `json:"data"`
+	HasMore          bool                   `json:"has_more"`
+	AdditionalFields map[string]any         `json:"-"`
+}
+
+// InsightStatus is an insight result state. Unknown future values remain
+// representable for forward compatibility.
+type InsightStatus string
+
+const (
+	InsightStatusReady   InsightStatus = "ready"
+	InsightStatusPending InsightStatus = "pending"
+	InsightStatusNoData  InsightStatus = "no_data"
+)
+
+// InsightErrorCode explains why an insight has no data. Unknown future values
+// remain representable for forward compatibility.
+type InsightErrorCode string
+
+const (
+	InsightErrorCodeMissingPermissions InsightErrorCode = "missing_permissions"
+	InsightErrorCodeInternalError      InsightErrorCode = "internal_error"
+)
+
+// InsightValueType identifies the shape of an InsightValue. Unknown future
+// values remain representable for forward compatibility.
+type InsightValueType string
+
+const InsightValueTypeNumberOfItems InsightValueType = "number_of_items"
+
+// NumberOfItems is the payload of a number_of_items insight value.
+type NumberOfItems struct {
+	// Label names what was counted, such as a brand.
+	Label            *string        `json:"label,omitempty"`
+	Count            int64          `json:"count"`
+	AdditionalFields map[string]any `json:"-"`
+}
+
+// InsightValue is a tagged insight value. NumberOfItems is set when Type is
+// InsightValueTypeNumberOfItems. For other types, every property except type
+// is preserved in AdditionalFields.
+type InsightValue struct {
+	Type             InsightValueType `json:"type"`
+	NumberOfItems    *NumberOfItems   `json:"number_of_items,omitempty"`
+	AdditionalFields map[string]any   `json:"-"`
+}
+
+// InsightEntry is a labeled value within an insight result.
+type InsightEntry struct {
+	Label            string         `json:"label"`
+	Value            InsightValue   `json:"value"`
+	AdditionalFields map[string]any `json:"-"`
+}
+
+// Insight is an insight result. AsOf is Unix seconds and is set for terminal
+// ready and no_data results; AsOf and Data are nil while pending.
+type Insight struct {
+	Status                   InsightStatus             `json:"status"`
+	ID                       string                    `json:"id"`
+	Description              string                    `json:"description"`
+	ErrorCode                *InsightErrorCode         `json:"error_code,omitempty"`
+	ErrorMessage             *string                   `json:"error_message,omitempty"`
+	AuthorizationRemediation *AuthorizationRemediation `json:"authorization_remediation,omitempty"`
+	AsOf                     *int64                    `json:"as_of,omitempty"`
+	Data                     []InsightEntry            `json:"data,omitempty"`
+	AdditionalFields         map[string]any            `json:"-"`
+}
+
+// InsightsPage is a page of insight results.
+type InsightsPage struct {
+	Data             []Insight      `json:"data"`
+	HasMore          bool           `json:"has_more"`
+	AdditionalFields map[string]any `json:"-"`
+}
+
 // WebBotAuthBlock contains HTTP message-signature fields for an authority.
 type WebBotAuthBlock struct {
 	Signature      string `json:"signature"`

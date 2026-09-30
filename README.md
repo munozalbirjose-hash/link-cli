@@ -328,6 +328,47 @@ link-cli balances list --source <source_id>
 
 Returns current balances for connected accounts, including `cash.available` (bank/savings) or `credit.used` (credit cards).
 
+#### List insights
+
+Insights are signals Link computes ahead of time from a user's authorized financial data. The server can add new insight types without a CLI release, so discover them first:
+
+```bash
+link-cli insights list-available-types
+link-cli insights list-available-types --limit 100 --starting-after <insight_id>
+```
+
+Each type has an `id` and `description`. When the current grant needs more access to compute a type, it also has `authorization_remediation` with the `scope` and/or `authorization_details` to request. If a type has no `authorization_remediation`, no extra access is currently known to be required.
+
+Then fetch results, filtered to the insight IDs you need:
+
+```bash
+link-cli insights list
+link-cli insights list --insight top_brand_by_transaction_count_per_category_t180d
+link-cli insights list --insight <insight_id> --insight <another_insight_id>
+```
+
+| Flag | Description |
+| ---- | ---- |
+| `--insight` | Only return this insight ID (repeatable). Omit to return all insights |
+| `--limit` | Max results per page (1–100, default 10) |
+| `--starting-after` | Return insights after this insight ID. Use the last `id` from a page where `has_more` is `true` |
+
+Each result has a `status`:
+
+| Status | Meaning |
+| ---- | ---- |
+| `ready` | Computed. `data` holds `{ label, value }` entries and `as_of` is the Unix time the result was computed |
+| `pending` | Not computed yet. Try again later; there is no completion estimate |
+| `no_data` | No result. Check `error_code`: `missing_permissions` means the grant lacks access (see `error_message` and `authorization_remediation`), `internal_error` means the server could not compute it, and no `error_code` means there is no qualifying activity |
+
+Values are tagged by `type`. `number_of_items` values carry `number_of_items.count` and an optional `number_of_items.label` naming what was counted, such as the brand; the CLI shows them as `J.crew (10 items)`. Future value types keep their fields in `--format json` output.
+
+To resolve `missing_permissions`, request only the access in `authorization_remediation` (for example, `link-cli auth upgrade --source-actions read_link_transactions`), then run `insights list` again. Missing permissions are not the same as zero activity.
+
+The first insight type is `top_brand_by_transaction_count_per_category_t180d`: the top brand in each shopping category over the last 180 days, by transaction count. Useful results need at least one Link payment detail authorized for `read_link_transactions`, `read_external_transactions`, or both. The server decides whether remediation is needed; `auth status` is only guidance.
+
+The `insights` commands require a Link API release that serves `/insights` and `/insights/available_types`. Older API versions return an error; the CLI does not fall back to another endpoint.
+
 ## Advanced
 
 ### Authentication

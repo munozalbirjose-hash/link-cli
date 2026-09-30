@@ -247,6 +247,7 @@ if errors.As(err, &linkError) {
 - `Transactions` — list transactions
 - `Sources` — list connected sources
 - `Balances` — list balances
+- `Insights` — list available insight types and insight results
 - `WebBotAuth` — sign URLs for Web Bot Auth
 - `Reports` — report agent outcomes
 
@@ -258,8 +259,36 @@ value is encoded as `[]` or `{}`. For example,
 
 Optional nullable JSON fields use pointers. As is conventional in Go, a `nil`
 pointer does not distinguish an omitted property from an explicit JSON `null`.
-`TransactionsPage`, `Source`, `SourcesPage`, `Balance`, and `BalancesPage`
-preserve forward-compatible response properties in `AdditionalFields`.
+`TransactionsPage`, `Source`, `SourcesPage`, `Balance`, `BalancesPage`, and
+the Insights response types preserve forward-compatible response properties in
+`AdditionalFields`.
+
+Insight values are tagged by `Type`. For `InsightValueTypeNumberOfItems`,
+`NumberOfItems` holds the validated count and an optional `Label` naming what
+was counted, such as a brand; other value types leave
+`NumberOfItems` nil and keep their properties in `AdditionalFields`:
+
+```go
+page, err := client.Insights.List(ctx, &link.ListInsightsParams{
+	Insights: []string{"top_brand_by_transaction_count_per_category_t180d"},
+})
+if err != nil {
+	return err
+}
+for _, insight := range page.Data {
+	if insight.Status != link.InsightStatusReady {
+		// Pending insights have no data yet. For missing_permissions, request
+		// insight.AuthorizationRemediation before retrying.
+		continue
+	}
+	for _, entry := range insight.Data {
+		if items := entry.Value.NumberOfItems; items != nil && items.Label != nil {
+			// For example: "Top brand from Clothing and accessories shopping category: J.crew (10)"
+			fmt.Printf("%s: %s (%d)\n", entry.Label, *items.Label, items.Count)
+		}
+	}
+}
+```
 
 ## Versioning
 

@@ -12,6 +12,7 @@ from typing import assert_type
 from types import MappingProxyType
 from link import AsyncClient, Client, LineItemParams, SpendRequest, PaymentMethod
 from link import JsonPrimitive, JsonValue, SpendRequestStatus
+from link import AvailableInsightTypesPage, InsightsPage, NumberOfItemsInsightValue
 
 future_status: SpendRequestStatus = "future_status"
 primitive: JsonPrimitive = None
@@ -41,6 +42,13 @@ def valid(client: Client) -> None:
                           "app_name": "app", "external_user_id": "user",
                           "device_id": "device"},
     )
+    page = client.insights.list(insights=("insight_1",), limit=10)
+    assert_type(page, InsightsPage)
+    assert_type(client.insights.list_available_types(), AvailableInsightTypesPage)
+    for insight in page.data:
+        for entry in insight.data or []:
+            if isinstance(entry.value, NumberOfItemsInsightValue):
+                assert_type(entry.value.number_of_items.count, int)
 
 async def valid_async(client: AsyncClient) -> None:
     result = await client.spend_requests.create(
@@ -51,6 +59,7 @@ async def valid_async(client: AsyncClient) -> None:
         await client.payment_methods.update("pd_1", nickname="Work card"),
         PaymentMethod,
     )
+    assert_type(await client.insights.list(), InsightsPage)
 """)
     command = [
         sys.executable,

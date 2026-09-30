@@ -4,6 +4,7 @@ import {
   type IAttestationsResource,
   type IBalancesResource,
   type IIdentityCredentialsResource,
+  type IInsightsResource,
   type IPaymentMethodsResource,
   type IReportResource,
   type IShippingAddressResource,
@@ -122,6 +123,7 @@ export class ResourceFactory {
   private transactionsResource?: ITransactionsResource;
   private sourcesResource?: ISourcesResource;
   private balancesResource?: IBalancesResource;
+  private insightsResource?: IInsightsResource;
   private webBotAuthResource?: IWebBotAuthResource;
   private reportResource?: IReportResource;
   private ucpResource?: IUcpResource;
@@ -327,6 +329,16 @@ export class ResourceFactory {
 
     const resource = sanitizeResource(this.createSdkClient().balances);
     this.balancesResource = resource;
+    return resource;
+  }
+
+  createInsightsResource(): IInsightsResource {
+    if (this.insightsResource) {
+      return this.insightsResource;
+    }
+
+    const resource = sanitizeResource(this.createSdkClient().insights);
+    this.insightsResource = resource;
     return resource;
   }
 

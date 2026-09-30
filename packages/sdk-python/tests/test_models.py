@@ -1,10 +1,14 @@
 import pytest
-from fixtures import BALANCE, SPEND
+from fixtures import BALANCE, READY_INSIGHT, SOURCE_REMEDIATION, SPEND
 from pydantic import BaseModel, ValidationError
 
 from link import (
+    AuthorizationRemediation,
+    AvailableInsightTypesPage,
     Balance,
     BalancesPage,
+    InsightEntry,
+    InsightsPage,
     PaymentMethod,
     Source,
     SourcesPage,
@@ -125,6 +129,20 @@ def test_spend_request_full_response() -> None:
             },
         ),
         (Balance, {**BALANCE, "type": "future", "extra": 5}),
+        (
+            AvailableInsightTypesPage,
+            {
+                "data": [{"id": "a", "description": "A", "future": 1}],
+                "has_more": False,
+                "extra": None,
+            },
+        ),
+        (InsightsPage, {"data": [READY_INSIGHT], "has_more": True, "extra": []}),
+        (AuthorizationRemediation, {**SOURCE_REMEDIATION, "hint": "reauthorize"}),
+        (
+            InsightEntry,
+            {"label": "L", "value": {"type": "text", "text": "hi"}, "rank": 1},
+        ),
     ],
 )
 def test_forward_fields_roundtrip(model: type[BaseModel], data: dict) -> None:

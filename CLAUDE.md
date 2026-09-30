@@ -53,6 +53,7 @@ Defined in `packages/sdk/src/resources/interfaces.ts`:
 - `IAttestationsResource` — Privacy Pass Blind RSA token issuance
 - `IIdentityCredentialsResource` — signed user info issuance
 - `ISpendRequestResource` — CRUD + request-approval for spend requests
+- `IInsightsResource` — insight type discovery and computed insight results
 
 The SDK only accepts credentials. Device authorization, refresh-token
 persistence, login state, and auth-specific errors live under
@@ -81,7 +82,7 @@ Commands in `packages/cli/src/cli.tsx` (incur framework). Each has two output mo
 - **Interactive** (default): Ink/React components from `packages/cli/src/commands/`
 - **JSON** (`--format json`): JSON to stdout, errors as JSON with `code` and `message` fields with exit code 1
 
-Commands: `auth login|logout|status`, `user-info retrieve`, `spend-request create|update|retrieve|request-approval|cancel`, `payment-methods list|retrieve|add|update`, `shipping-address list`, `mpp pay|decode`, `identity attestations request|list|take`, `identity credentials request|list|present`, `report`, `serve`.
+Commands: `auth login|logout|status`, `user-info retrieve`, `spend-request create|update|retrieve|request-approval|cancel`, `insights list-available-types|list`, `payment-methods list|retrieve|add|update`, `shipping-address list`, `mpp pay|decode`, `identity attestations request|list|take`, `identity credentials request|list|present`, `report`, `serve`.
 
 The CLI also runs as an MCP server (`--mcp`) and serves skill files via `skills` subcommand, both provided by incur.
 
@@ -146,6 +147,15 @@ Key input field notes:
 - The SPT is one-time-use — a failed payment requires running `mpp pay` again (creates a new spend request).
 - In agent mode the full flow yields `_next.pay_argv` (`{ command: 'mpp', args: [...] }`) alongside `_next.pay_command`. **`pay_argv` is authoritative** — it holds the raw values and is meant to be invoked without a shell. `pay_command` is the compatibility string and every dynamic part of it (url, method, body, each header, spend-request id) must go through `shellQuote` from `packages/cli/src/utils/shell-quote.ts`. See "Security: shell-quoting command strings".
 - Implemented in `packages/cli/src/commands/mpp/` — pay.tsx (logic), schema.ts (input/output schema), index.tsx (incur registration).
+
+### insights command
+
+- `insights list-available-types [--limit <n>] [--starting-after <id>]` calls `GET /insights/available_types`. `insights list [--insight <id>]... [--limit <n>] [--starting-after <id>]` calls `GET /insights` with repeated `insights[]`. Both return `{ data, has_more }` pages; the server defaults `limit` to 10, and the CLI rejects values outside 1–100 before calling the API. Options live in `packages/cli/src/commands/insights/schema.ts`; SDK types in `IInsightsResource`, `ListAvailableInsightTypesParams`, and `ListInsightsParams`.
+- Output policy is `agent-only`. Structured output is the SDK response unchanged, after `sanitizeResource()`. The interactive renderer shows `authorization_remediation` as scopes and detail `type`/`actions` only; it never prints other detail fields such as source IDs.
+- Insight `status` is `ready`, `pending`, or `no_data`. `no_data` with `error_code: missing_permissions` means the grant lacks access, `internal_error` means a server failure, and no `error_code` means no qualifying activity. Never present missing permissions or errors as zero activity.
+- Values are tagged by `type`. `number_of_items` requires `number_of_items.count` and accepts an optional string `number_of_items.label` (what was counted, such as a brand); unknown statuses, error codes, value types, and additive fields are preserved. Optional response fields accept `null`.
+- The SDK validates the `{ data, has_more }` contract and rejects the older response shape with `invalid_response`. There is no fallback. The commands require the backend release that serves these endpoints.
+- The Go and Python SDKs mirror the resource (`Insights.ListAvailableTypes`/`List` and `insights.list_available_types`/`list`).
 
 ### demo command
 

@@ -359,6 +359,105 @@ export interface BalancesPage {
   [key: string]: unknown;
 }
 
+/**
+ * An OAuth rich authorization request entry, preserved as returned by the
+ * server. Relevant entries currently use `type: "source"` with `actions` such
+ * as `read_link_transactions` and `read_external_transactions`.
+ */
+export interface AuthorizationDetail {
+  type: string;
+  actions?: string[];
+  [key: string]: unknown;
+}
+
+export type AuthorizationDetails = AuthorizationDetail[];
+
+/** Additional access the current grant needs before an insight can be read. */
+export interface AuthorizationRemediation {
+  scope?: string[];
+  authorization_details?: AuthorizationDetails;
+  [key: string]: unknown;
+}
+
+export interface AvailableInsightType {
+  id: string;
+  description: string;
+  /**
+   * Present only when the current grant needs more authorization to retrieve
+   * this insight. Absence means no additional authorization is currently known
+   * to be required.
+   */
+  authorization_remediation?: AuthorizationRemediation | null;
+  [key: string]: unknown;
+}
+
+export interface AvailableInsightTypesPage {
+  data: AvailableInsightType[];
+  has_more: boolean;
+  [key: string]: unknown;
+}
+
+/** Known statuses, while remaining forward-compatible with new API values. */
+export type InsightStatus =
+  | 'ready'
+  | 'pending'
+  | 'no_data'
+  | (string & Record<never, never>);
+
+/** Known error codes, while remaining forward-compatible with new API values. */
+export type InsightErrorCode =
+  | 'missing_permissions'
+  | 'internal_error'
+  | (string & Record<never, never>);
+
+export interface NumberOfItemsInsightValue {
+  type: 'number_of_items';
+  number_of_items: {
+    /** What was counted, such as a brand name. */
+    label?: string | null;
+    count: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+/**
+ * A future value type (for example `payment_volume` or `text`). Unknown fields
+ * are preserved as returned by the server.
+ */
+export interface UnknownInsightValue {
+  type: string;
+  [key: string]: unknown;
+}
+
+export type InsightValue = NumberOfItemsInsightValue | UnknownInsightValue;
+
+export interface InsightEntry {
+  label: string;
+  value: InsightValue;
+  [key: string]: unknown;
+}
+
+export interface Insight {
+  status: InsightStatus;
+  id: string;
+  description: string;
+  error_code?: InsightErrorCode | null;
+  error_message?: string | null;
+  authorization_remediation?: AuthorizationRemediation | null;
+  /** Unix seconds. Present for terminal `ready`/`no_data` results. */
+  as_of?: number | null;
+  /** Absent while `pending`. */
+  data?: InsightEntry[] | null;
+  [key: string]: unknown;
+}
+
+export interface InsightsPage {
+  data: Insight[];
+  has_more: boolean;
+  [key: string]: unknown;
+}
+
 export interface WebBotAuthBlock {
   signature: string;
   signature_input: string;

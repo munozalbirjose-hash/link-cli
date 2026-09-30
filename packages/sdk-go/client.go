@@ -46,6 +46,7 @@ type Client struct {
 	Transactions      *TransactionsResource
 	Sources           *SourcesResource
 	Balances          *BalancesResource
+	Insights          *InsightsResource
 	WebBotAuth        *WebBotAuthResource
 	Reports           *ReportsResource
 }
@@ -82,6 +83,7 @@ func NewClient(options Options) (*Client, error) {
 		Transactions:      &TransactionsResource{base: api},
 		Sources:           &SourcesResource{base: api},
 		Balances:          &BalancesResource{base: api},
+		Insights:          &InsightsResource{base: api},
 		WebBotAuth:        newWebBotAuthResource(api),
 		Reports:           &ReportsResource{base: api},
 	}, nil

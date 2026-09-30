@@ -183,6 +183,7 @@ ID are keyword-only. List methods return one API page without auto-pagination.
 | `transactions` | `list` → `TransactionsPage` |
 | `sources` | `list` → `SourcesPage` |
 | `balances` | `list` → `BalancesPage` |
+| `insights` | `list_available_types` → `AvailableInsightTypesPage`; `list` → `InsightsPage` |
 | `web_bot_auth` | `sign_url(url)` → `WebBotAuthBlock`; cached by hostname until 30 seconds before expiry. |
 | `reports` | `create` → `ReportRecord` |
 
@@ -198,6 +199,9 @@ request = client.spend_requests.update("sr_123", line_items=[], totals=[])
 page = client.transactions.list(
     limit=20, starting_after="tx_123", start_date="2026-01-01", sources=["source_123"]
 )
+insights = client.insights.list(
+    insights=["top_brand_by_transaction_count_per_category_t180d"], limit=10
+)
 report = client.reports.create(
     domain="merchant.example", outcome="success", spend_request_id="sr_123", tags=[]
 )
@@ -209,8 +213,9 @@ Responses are Pydantic models with attribute access. Request methods have typed
 keyword arguments; nested request objects use dictionaries. Exported TypedDicts
 such as `CreateSpendRequestParams` can also be passed with `**params`. Collection
 inputs accept sequences (including tuples) and metadata accepts read-only mappings.
-Pass `include` and `sources` as sequences such as `["card"]` and `["source_123"]`;
-bare strings are rejected. `JsonPrimitive` and `JsonValue` describe JSON data.
+Pass `include`, `sources`, and `insights` as sequences such as `["card"]` and
+`["source_123"]`; bare strings are rejected. `JsonPrimitive` and `JsonValue`
+describe JSON data.
 
 Optional request values set to `None` are omitted; explicit empty collections,
 `False`, and `0` are sent. Request enum types describe known values so type
@@ -225,9 +230,15 @@ empty values. Optional fields default to `None`, and `model_fields_set` or
 Shipping addresses can omit nullable postal fields and `nickname`, matching
 the other SDKs.
 Malformed scalar types are rejected without coercion. `TransactionsPage`,
-`Source`, `SourcesPage`, `Balance`, and `BalancesPage` retain unknown properties
-in `model_extra` and include them in serialized output. Use
-`model_dump(exclude_unset=True)` to preserve response field presence.
+`Source`, `SourcesPage`, `Balance`, `BalancesPage`, and the Insights models
+retain unknown properties in `model_extra` and include them in serialized
+output. Use `model_dump(exclude_unset=True)` to preserve response field presence.
+
+An insight entry's `value` is a `NumberOfItemsInsightValue` when its `type` is
+`number_of_items`, and an `UnknownInsightValue` with its fields in `model_extra`
+for any other type. Narrow with `isinstance` to read
+`value.number_of_items.label` (what was counted, such as a brand; may be
+`None`) and `value.number_of_items.count`. Pending insights omit `as_of` and `data`.
 
 In user info, absent wallet enrichment means unavailable. Within present spend
 limits, a null limit or remaining amount means unlimited; these are distinct

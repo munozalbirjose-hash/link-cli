@@ -5,19 +5,31 @@ from typing import Any
 
 import pytest
 from conftest import API
-from fixtures import ADDRESS, BALANCE, SPEND, TRANSACTION
+from fixtures import (
+    ADDRESS,
+    BALANCE,
+    READY_INSIGHT,
+    SOURCE_REMEDIATION,
+    SPEND,
+    TRANSACTION,
+)
 
 from link import (
+    AvailableInsightTypesPage,
     BalancesPage,
+    GetAccessTokenOptions,
+    InsightsPage,
     LinkAPIError,
     LinkResponseError,
     LinkSDKError,
+    NumberOfItemsInsightValue,
     PaymentMethod,
     ReportRecord,
     ShippingAddressRecord,
     SourcesPage,
     SpendRequest,
     TransactionsPage,
+    UnknownInsightValue,
 )
 
 CONTEXT = (
@@ -96,6 +108,25 @@ CONTEXT = (
             "/balances",
             {"data": [BALANCE]},
             BalancesPage,
+            False,
+        ),
+        (
+            "insights",
+            "list_available_types",
+            "/insights/available_types",
+            {
+                "data": [{"id": "insight_1", "description": "Insight"}],
+                "has_more": False,
+            },
+            AvailableInsightTypesPage,
+            False,
+        ),
+        (
+            "insights",
+            "list",
+            "/insights",
+            {"data": [READY_INSIGHT], "has_more": False},
+            InsightsPage,
             False,
         ),
     ],
@@ -190,13 +221,17 @@ async def test_sparse_shipping_address_preserves_field_presence(
 
 
 @pytest.mark.parametrize("value", ["card", b"card"])
-@pytest.mark.parametrize("resource", ["spend_requests", "transactions", "balances"])
+@pytest.mark.parametrize(
+    "resource", ["spend_requests", "transactions", "balances", "insights"]
+)
 async def test_string_instead_of_sequence_is_rejected(
     api: API, resource: str, value: Any
 ) -> None:
     with pytest.raises(LinkSDKError, match="sequence of strings"):
         if resource == "spend_requests":
             await api.call(resource, "retrieve", "sr_1", include=value)
+        elif resource == "insights":
+            await api.call(resource, "list", insights=value)
         else:
             await api.call(resource, "list", sources=value)
     assert not api.requests
@@ -581,3 +616,294 @@ async def test_read_only_sequences_and_mappings(api: API) -> None:
     api.respond({"data": []})
     await api.call("balances", "list", sources=("source_1", "source_2"))
     assert api.requests[-1].url.params.get_list("sources[]") == ["source_1", "source_2"]
+
+
+INSIGHTS_PAGE: dict[str, Any] = {"data": [], "has_more": False}
+
+
+@pytest.mark.parametrize("method", ["list_available_types", "list"])
+async def test_insights_queries(api: API, method: str) -> None:
+    path = (
+        "/insights/available_types" if method == "list_available_types" else "/insights"
+    )
+    api.respond(INSIGHTS_PAGE)
+    await api.call("insights", method)
+    assert str(api.requests[-1].url) == "https://api.link.com" + path
+    api.respond(INSIGHTS_PAGE)
+    await api.call("insights", method, limit=None, starting_after=None)
+    assert not api.requests[-1].url.query
+    api.respond(INSIGHTS_PAGE)
+    await api.call("insights", method, limit=5, starting_after="insight_a/b ?")
+    query = api.requests[-1].url.params
+    assert list(query.multi_items()) == [
+        ("limit", "5"),
+        ("starting_after", "insight_a/b ?"),
+    ]
+    assert api.requests[-1].url.path == path
+
+
+async def test_insights_repeat_selected_types_in_order(api: API) -> None:
+    api.respond(INSIGHTS_PAGE)
+    await api.call("insights", "list", insights=("second", "first", "a/b"), limit=100)
+    query = api.requests[-1].url.params
+    assert query.get_list("insights[]") == ["second", "first", "a/b"]
+    assert query["limit"] == "100"
+    api.respond(INSIGHTS_PAGE)
+    await api.call("insights", "list", insights=[])
+    assert not api.requests[-1].url.query
+
+
+async def test_insights_ready_result(api: API) -> None:
+    api.respond({"data": [READY_INSIGHT], "has_more": False})
+    page = await api.call("insights", "list")
+    assert page.has_more is False
+    insight = page.data[0]
+    assert insight.status == "ready"
+    assert insight.as_of == 1790723779
+    assert insight.error_code is None
+    value = insight.data[0].value
+    assert isinstance(value, NumberOfItemsInsightValue)
+    assert value.number_of_items.label == "J.crew"
+    assert value.number_of_items.count == 10
+    assert page.model_dump(exclude_unset=True) == {
+        "data": [READY_INSIGHT],
+        "has_more": False,
+    }
+
+
+async def test_insights_non_ready_results(api: API) -> None:
+    pending = {"status": "pending", "id": "pending", "description": "Pending"}
+    missing = {
+        "status": "no_data",
+        "id": "missing",
+        "description": "Needs access",
+        "as_of": 1,
+        "data": None,
+        "error_code": "missing_permissions",
+        "error_message": "Grant access to transactions.",
+        "authorization_remediation": SOURCE_REMEDIATION,
+    }
+    internal = {
+        "status": "no_data",
+        "id": "internal",
+        "description": "Failed",
+        "as_of": 2,
+        "error_code": "internal_error",
+        "error_message": None,
+        "authorization_remediation": None,
+    }
+    empty = {"status": "no_data", "id": "empty", "description": "None", "data": []}
+    api.respond({"data": [pending, missing, internal, empty], "has_more": False})
+    page = await api.call("insights", "list")
+    first, second, third, fourth = page.data
+    assert first.as_of is None and first.data is None
+    assert {"as_of", "data"}.isdisjoint(first.model_fields_set)
+    assert second.error_code == "missing_permissions"
+    assert second.error_message == "Grant access to transactions."
+    assert second.data is None
+    detail = second.authorization_remediation.authorization_details[0]
+    assert detail.type == "source"
+    assert detail.actions == ["read_link_transactions", "read_external_transactions"]
+    assert third.error_code == "internal_error"
+    assert third.error_message is None and third.authorization_remediation is None
+    assert fourth.error_code is None and fourth.data == []
+    assert page.model_dump(exclude_unset=True)["data"] == [
+        pending,
+        missing,
+        internal,
+        empty,
+    ]
+
+
+async def test_insights_preserve_unknown_values_and_fields(api: API) -> None:
+    insight = {
+        "status": "stale",
+        "id": "future",
+        "description": "Future",
+        "error_code": "rate_limited",
+        "future_field": {"nested": True},
+        "authorization_remediation": {
+            "scope": ["transactions:read"],
+            "authorization_details": [
+                {"type": "source", "actions": [], "locations": ["https://link.com"]}
+            ],
+            "hint": "reauthorize",
+        },
+        "data": [
+            {
+                "label": "Volume",
+                "value": {
+                    "type": "payment_volume",
+                    "payment_volume": {"amount": 1200, "currency": "usd"},
+                },
+                "rank": 1,
+            },
+            {
+                "label": "Count",
+                "value": {
+                    "type": "number_of_items",
+                    "number_of_items": {"count": 2, "unit": "brands"},
+                    "extra": "kept",
+                },
+            },
+            {
+                "label": "Legacy",
+                "value": {"type": "text", "number_of_items": "not validated"},
+            },
+        ],
+    }
+    body = {"data": [insight], "has_more": False, "next_cursor": "opaque"}
+    api.respond(body)
+    page = await api.call("insights", "list")
+    assert page.model_extra == {"next_cursor": "opaque"}
+    result = page.data[0]
+    assert result.status == "stale"
+    assert result.error_code == "rate_limited"
+    assert result.model_extra == {"future_field": {"nested": True}}
+    remediation = result.authorization_remediation
+    assert remediation.model_extra == {"hint": "reauthorize"}
+    assert remediation.authorization_details[0].model_extra == {
+        "locations": ["https://link.com"]
+    }
+    volume, count, text = result.data
+    assert isinstance(volume.value, UnknownInsightValue)
+    assert volume.value.type == "payment_volume"
+    assert volume.value.model_extra == {
+        "payment_volume": {"amount": 1200, "currency": "usd"}
+    }
+    assert volume.model_extra == {"rank": 1}
+    assert isinstance(count.value, NumberOfItemsInsightValue)
+    assert count.value.number_of_items.model_extra == {"unit": "brands"}
+    assert isinstance(text.value, UnknownInsightValue)
+    assert page.model_dump(exclude_unset=True) == body
+
+
+async def test_available_insight_types(api: API) -> None:
+    body = {
+        "data": [
+            {"id": "ready", "description": "Ready", "authorization_remediation": None},
+            {
+                "id": "needs_access",
+                "description": "Needs access",
+                "category": "shopping",
+                "authorization_remediation": {"scope": [], **SOURCE_REMEDIATION},
+            },
+        ],
+        "has_more": True,
+        "url": "/insights/available_types",
+    }
+    api.respond(body)
+    page = await api.call("insights", "list_available_types")
+    assert page.has_more is True
+    assert page.model_extra == {"url": "/insights/available_types"}
+    ready, needs_access = page.data
+    assert ready.authorization_remediation is None
+    assert needs_access.model_extra == {"category": "shopping"}
+    assert needs_access.authorization_remediation.scope == []
+    assert page.model_dump(exclude_unset=True) == body
+
+
+def _insight(**fields: Any) -> dict[str, Any]:
+    return {"status": "ready", "id": "a", "description": "A", **fields}
+
+
+def _entry(value: Any) -> dict[str, Any]:
+    return {
+        "data": [_insight(data=[{"label": "L", "value": value}])],
+        "has_more": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("method", "data"),
+    [
+        ("list_available_types", {"data": []}),
+        ("list_available_types", {"has_more": False}),
+        ("list_available_types", {"data": [{"description": "A"}], "has_more": False}),
+        (
+            "list_available_types",
+            {"data": [{"id": "a", "description": None}], "has_more": False},
+        ),
+        (
+            "list_available_types",
+            {
+                "data": [
+                    {
+                        "id": "a",
+                        "description": "A",
+                        "authorization_remediation": {
+                            "authorization_details": [{"actions": []}]
+                        },
+                    }
+                ],
+                "has_more": False,
+            },
+        ),
+        ("list", {"data": []}),
+        ("list", {"data": None, "has_more": False}),
+        ("list", {"data": [], "has_more": "false"}),
+        ("list", {"data": [_insight(id=None)], "has_more": False}),
+        ("list", {"data": [{"id": "a", "description": "A"}], "has_more": False}),
+        ("list", {"data": [_insight(data=[{"label": "L"}])], "has_more": False}),
+        ("list", _entry({})),
+        ("list", _entry({"type": "number_of_items"})),
+        ("list", _entry({"type": "number_of_items", "number_of_items": {}})),
+        (
+            "list",
+            _entry({"type": "number_of_items", "number_of_items": {"count": "4"}}),
+        ),
+        (
+            "list",
+            _entry(
+                {
+                    "type": "number_of_items",
+                    "number_of_items": {"label": 7, "count": 4},
+                }
+            ),
+        ),
+        ("list", None),
+    ],
+)
+async def test_insights_reject_invalid_responses(
+    api: API, method: str, data: Any
+) -> None:
+    api.respond(data)
+    with pytest.raises(LinkResponseError):
+        await api.call("insights", method)
+
+
+@pytest.mark.parametrize("method", ["list_available_types", "list"])
+async def test_insights_api_error(api: API, method: str) -> None:
+    api.respond({"error": {"message": "insights unavailable"}}, 500)
+    with pytest.raises(LinkAPIError) as caught:
+        await api.call("insights", method)
+    assert caught.value.status == 500
+    assert "insights unavailable" in str(caught.value)
+
+
+async def test_insights_refresh_once_and_honor_base_url(mode: str) -> None:
+    calls = []
+
+    def provider(options: GetAccessTokenOptions) -> str:
+        calls.append(options.force_refresh)
+        return "new" if options.force_refresh else "old"
+
+    api = API(
+        mode, get_access_token=provider, api_base_url="https://general.example/v1/"
+    )
+    try:
+        api.respond({"error": "expired"}, 401)
+        api.respond({"data": [READY_INSIGHT], "has_more": False})
+        page = await api.call("insights", "list", insights=["a", "b"])
+        assert page.data[0].id == READY_INSIGHT["id"]
+        assert calls == [False, True]
+        assert [r.headers["Authorization"] for r in api.requests] == [
+            "Bearer old",
+            "Bearer new",
+        ]
+        assert api.requests[0].url == api.requests[1].url
+        assert str(api.requests[1].url) == (
+            "https://general.example/v1/insights?insights%5B%5D=a&insights%5B%5D=b"
+        )
+    finally:
+        await api.close()

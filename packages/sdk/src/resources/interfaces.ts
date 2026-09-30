@@ -1,8 +1,10 @@
 import type {
   ApprovalDetail,
   ApprovalPolicy,
+  AvailableInsightTypesPage,
   BalancesPage,
   CredentialType,
+  InsightsPage,
   LineItem,
   PaymentMethod,
   RequestApprovalResponse,
@@ -163,6 +165,29 @@ export interface ListBalancesParams {
 
 export interface IBalancesResource {
   list(params?: ListBalancesParams): Promise<BalancesPage>;
+}
+
+export interface ListAvailableInsightTypesParams {
+  /** 1-100. The server defaults to 10. */
+  limit?: number;
+  /** The last insight type ID from the previous page. */
+  starting_after?: string;
+}
+
+export interface ListInsightsParams {
+  /** Insight type IDs to return. Omit to return every available insight. */
+  insights?: string[];
+  /** 1-100. The server defaults to 10. */
+  limit?: number;
+  /** The last insight ID from the previous page. */
+  starting_after?: string;
+}
+
+export interface IInsightsResource {
+  listAvailableTypes(
+    params?: ListAvailableInsightTypesParams,
+  ): Promise<AvailableInsightTypesPage>;
+  list(params?: ListInsightsParams): Promise<InsightsPage>;
 }
 
 export const REPORT_OUTCOMES = ['success', 'blocked', 'abandoned'] as const;

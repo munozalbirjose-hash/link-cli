@@ -1,8 +1,8 @@
 """Link response models. Amounts are integers; API timestamps remain strings."""
 
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, model_validator
 
 from ._types import (
     AgentWalletVerificationStatus,
@@ -11,6 +11,8 @@ from ._types import (
     BalanceType,
     CredentialType,
     DeviceType,
+    InsightErrorCode,
+    InsightStatus,
     NextActionResolution,
     NextActionType,
     PaymentOutcome,
@@ -302,6 +304,98 @@ class BalancesPage(LinkModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
     data: list[Balance]
     has_more: bool | None = None
+
+
+class AuthorizationDetail(LinkModel):
+    """An OAuth rich authorization request entry, such as a `source` detail."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    type: str
+    actions: list[str] | None = None
+
+
+class AuthorizationRemediation(LinkModel):
+    """Additional access the current grant needs before an insight can be read."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    scope: list[str] | None = None
+    authorization_details: list[AuthorizationDetail] | None = None
+
+
+class AvailableInsightType(LinkModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    id: str = Field(min_length=1)
+    description: str
+    authorization_remediation: AuthorizationRemediation | None = None
+
+
+class AvailableInsightTypesPage(LinkModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    data: list[AvailableInsightType]
+    has_more: bool
+
+
+class NumberOfItems(LinkModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    label: str | None = None
+    """What was counted, such as a brand."""
+    count: int
+
+
+class NumberOfItemsInsightValue(LinkModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    type: Literal["number_of_items"]
+    number_of_items: NumberOfItems
+
+
+class UnknownInsightValue(LinkModel):
+    """A future value type; its fields are retained in `model_extra`."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    type: str
+
+
+def _insight_value_tag(value: Any) -> str:
+    kind = (
+        value.get("type") if isinstance(value, dict) else getattr(value, "type", None)
+    )
+    return "number_of_items" if kind == "number_of_items" else "unknown"
+
+
+# Known value types are validated; any other tagged value is preserved as-is
+# so new server value types do not break older clients.
+InsightValue: TypeAlias = Annotated[
+    Annotated[NumberOfItemsInsightValue, Tag("number_of_items")]
+    | Annotated[UnknownInsightValue, Tag("unknown")],
+    Discriminator(_insight_value_tag),
+]
+
+
+class InsightEntry(LinkModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    label: str
+    value: InsightValue
+
+
+class Insight(LinkModel):
+    """An insight result. `as_of` is Unix seconds; `as_of` and `data` are
+    absent while pending."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    status: InsightStatus
+    id: str = Field(min_length=1)
+    description: str
+    error_code: InsightErrorCode | None = None
+    error_message: str | None = None
+    authorization_remediation: AuthorizationRemediation | None = None
+    as_of: int | None = None
+    data: list[InsightEntry] | None = None
+
+
+class InsightsPage(LinkModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    data: list[Insight]
+    has_more: bool
 
 
 class WebBotAuthBlock(LinkModel):

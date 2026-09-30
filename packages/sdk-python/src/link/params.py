@@ -118,6 +118,15 @@ class ListBalancesParams(ListSourcesParams, total=False):
     sources: Sequence[str] | None
 
 
+class ListAvailableInsightTypesParams(TypedDict, total=False):
+    limit: int | None
+    starting_after: str | None
+
+
+class ListInsightsParams(ListAvailableInsightTypesParams, total=False):
+    insights: Sequence[str] | None
+
+
 class CreateReportParams(TypedDict, total=False):
     domain: Required[str]
     outcome: Required[ReportOutcome]

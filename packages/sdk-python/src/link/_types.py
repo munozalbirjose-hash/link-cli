@@ -56,6 +56,8 @@ AgentWalletVerificationStatus: TypeAlias = Literal[
 ]
 TransactionOrigin: TypeAlias = Literal["link", "external_connection"]
 BalanceType: TypeAlias = Literal["cash", "credit"]
+InsightStatus: TypeAlias = Literal["ready", "pending", "no_data"] | str
+InsightErrorCode: TypeAlias = Literal["missing_permissions", "internal_error"] | str
 ReportOutcome: TypeAlias = Literal["success", "blocked", "abandoned"]
 ReportTag: TypeAlias = Literal[
     "stripe_checkout",

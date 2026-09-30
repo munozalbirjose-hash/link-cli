@@ -15,7 +15,9 @@ from ._types import (
     TransactionOrigin,
 )
 from .models import (
+    AvailableInsightTypesPage,
     BalancesPage,
+    InsightsPage,
     PaymentMethod,
     ReportRecord,
     RequestApprovalResponse,
@@ -30,7 +32,9 @@ from .params import (
     CreateReportParams,
     CreateSpendRequestParams,
     LineItemParams,
+    ListAvailableInsightTypesParams,
     ListBalancesParams,
+    ListInsightsParams,
     ListSourcesParams,
     ListTransactionsParams,
     TotalParams,
@@ -238,6 +242,39 @@ class AsyncBalancesResource:
             "sources": sources,
         }
         return await self._transport.request(op.balances(params))
+
+
+class AsyncInsightsResource:
+    def __init__(self, transport: AsyncTransport) -> None:
+        self._transport = transport
+
+    async def list_available_types(
+        self,
+        *,
+        limit: int | None = None,
+        starting_after: str | None = None,
+    ) -> AvailableInsightTypesPage:
+        """List insight types available to the user."""
+        params: ListAvailableInsightTypesParams = {
+            "limit": limit,
+            "starting_after": starting_after,
+        }
+        return await self._transport.request(op.insight_types(params))
+
+    async def list(
+        self,
+        *,
+        insights: Sequence[str] | None = None,
+        limit: int | None = None,
+        starting_after: str | None = None,
+    ) -> InsightsPage:
+        """List insight results, optionally limited to insight type IDs."""
+        params: ListInsightsParams = {
+            "insights": insights,
+            "limit": limit,
+            "starting_after": starting_after,
+        }
+        return await self._transport.request(op.insights(params))
 
 
 class AsyncReportsResource:

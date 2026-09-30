@@ -189,10 +189,9 @@ describe('built CLI command telemetry', () => {
 
   it('counts one command despite an API retry and token refresh', async () => {
     refreshRequired = true;
-    const result = await run(
-      ['payment-methods', 'list', '--json'],
-      { LINK_REFRESH_TOKEN: 'secret-refresh-token' },
-    );
+    const result = await run(['payment-methods', 'list', '--json'], {
+      LINK_REFRESH_TOKEN: 'secret-refresh-token',
+    });
     expect(result.exitCode, result.stderr || result.stdout).toBe(0);
     expect(apiRequests).toHaveLength(3);
     expect(events).toHaveLength(1);
@@ -202,7 +201,12 @@ describe('built CLI command telemetry', () => {
   });
 
   it('counts resolved commands that fail flag validation', async () => {
-    const result = await run(['payment-methods', 'list', '--unknown', '--json']);
+    const result = await run([
+      'payment-methods',
+      'list',
+      '--unknown',
+      '--json',
+    ]);
     expect(result.exitCode).toBe(1);
     expect(apiRequests).toHaveLength(0);
     expect(events).toHaveLength(1);
@@ -219,14 +223,11 @@ describe('built CLI command telemetry', () => {
   it.each<Record<string, string>>([
     { DO_NOT_TRACK: '1' },
     { LINK_CLI_TELEMETRY_OPTOUT: 'true' },
-  ])(
-    'honors opt-out: %j',
-    async (env) => {
-      const result = await run(['auth', 'status', '--json'], env);
-      expect(result.exitCode).toBe(0);
-      expect(events).toHaveLength(0);
-    },
-  );
+  ])('honors opt-out: %j', async (env) => {
+    const result = await run(['auth', 'status', '--json'], env);
+    expect(result.exitCode).toBe(0);
+    expect(events).toHaveLength(0);
+  });
 
   it.each(['hang', 'reject'] as const)(
     'preserves output and exit status when AEL %s',
@@ -237,7 +238,9 @@ describe('built CLI command telemetry', () => {
       telemetryMode = mode;
       const tracked = await run(['auth', 'status', '--json']);
       expect(tracked.exitCode).toBe(baseline.exitCode);
-      expect(JSON.parse(tracked.stdout)).toMatchObject(JSON.parse(baseline.stdout));
+      expect(JSON.parse(tracked.stdout)).toMatchObject(
+        JSON.parse(baseline.stdout),
+      );
       expect(events).toHaveLength(1);
     },
   );
@@ -264,7 +267,9 @@ describe('built CLI command telemetry', () => {
           callbacks.delete(id);
           resolve(message);
         });
-        child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
+        child.stdin.write(
+          `${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`,
+        );
       });
     try {
       expect(
@@ -304,10 +309,14 @@ describe('built CLI command telemetry', () => {
 
   it('records MCP tool calls served over HTTP', async () => {
     const port = await freePort();
-    const child = spawn(process.execPath, [CLI_PATH, 'serve', '--port', String(port)], {
-      env: environment(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const child = spawn(
+      process.execPath,
+      [CLI_PATH, 'serve', '--port', String(port)],
+      {
+        env: environment(),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
     try {
       await new Promise<void>((resolve, reject) => {
         let stderr = '';

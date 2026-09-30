@@ -13,8 +13,6 @@ import type {
   ISpendRequestResource,
   MppPaymentResult,
   MppPayOptions,
-  MppProbeResult,
-  MppRequestOptions,
 } from '@/resources/interfaces';
 import { PaymentMethodsResource } from '@/resources/payment-methods';
 import { SpendRequestResource } from '@/resources/spend-request';
@@ -25,9 +23,26 @@ type StripeChallenge = Challenge.Challenge<
   'stripe'
 >;
 
-export interface MppResourceDependencies {
+interface MppResourceDependencies {
   spendRequests?: ISpendRequestResource;
   paymentMethods?: IPaymentMethodsResource;
+}
+
+type MppPaymentStep = 'probing' | 'creating';
+
+interface MppRequestOptions {
+  url: string;
+  method?: string;
+  body?: string;
+  headers?: HeadersInit;
+}
+
+interface MppProbeResult {
+  url: string;
+  method: string;
+  headers: Headers;
+  body?: string;
+  response: Response;
 }
 
 interface PreparedMppPayment {
@@ -49,7 +64,7 @@ interface MppCreateSpendRequestOptions extends MppRequestOptions {
   amount?: number;
   paymentMethodId?: string;
   test?: boolean;
-  onStep?: (step: import('@/resources/interfaces').MppPaymentStep) => void;
+  onStep?: (step: MppPaymentStep) => void;
 }
 
 interface MppSpendRequestResult {

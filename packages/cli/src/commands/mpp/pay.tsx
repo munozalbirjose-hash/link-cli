@@ -2,8 +2,6 @@ import type {
   IMppResource,
   ISpendRequestResource,
   MppPaymentResult,
-  MppPaymentStep,
-  MppRequestOptions,
   SpendRequest,
 } from '@stripe/link-sdk';
 import { Box, Text, useInput } from 'ink';
@@ -14,11 +12,24 @@ import { pollUntilApproved } from '../../utils/poll-until-approved';
 import { sanitizeDeep } from '../../utils/sanitize-text';
 
 export type PayResult = MppPaymentResult;
-export type Step = MppPaymentStep;
+export type Step =
+  | 'probing'
+  | 'creating'
+  | 'approving'
+  | 'signing'
+  | 'submitting'
+  | 'done';
+
+interface CliMppRequestOptions {
+  url: string;
+  method?: string;
+  body?: string;
+  headers?: HeadersInit;
+}
 
 export interface CliMppResource extends IMppResource {
   createSpendRequest(
-    options: MppRequestOptions & {
+    options: CliMppRequestOptions & {
       context: string;
       amount?: number;
       paymentMethodId?: string;

@@ -103,22 +103,11 @@ export interface ISpendRequestResource {
   ): Promise<SpendRequest | null>;
 }
 
-export type MppPaymentStep =
-  | 'probing'
-  | 'creating'
-  | 'approving'
-  | 'signing'
-  | 'submitting'
-  | 'done';
-
-export interface MppRequestOptions {
+export interface MppPayOptions {
   url: string;
   method?: string;
   body?: string;
   headers?: HeadersInit;
-}
-
-export interface MppPayOptions extends MppRequestOptions {
   spendRequestId: string;
   challenge?: string;
 }
@@ -127,14 +116,6 @@ export interface MppPaymentResult {
   status: number;
   headers: Record<string, string>;
   body: string;
-}
-
-export interface MppProbeResult {
-  url: string;
-  method: string;
-  headers: Headers;
-  body?: string;
-  response: Response;
 }
 
 export interface DecodedStripeChallenge {

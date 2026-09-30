@@ -165,40 +165,49 @@ credentials out of model context, logs, and user-visible messages.
 ## Machine payments (MPP)
 
 The [Machine Payments Protocol](https://mpp.dev) uses HTTP 402 challenges to
-describe a payment required by an API. The SDK can probe an endpoint, create a
-Link spend request for its Stripe challenge, and submit the payment after the
-user approves it.
+describe a payment required by an API. `link.mpp` exposes two operations:
+`decodeChallenge` for inspecting a Stripe challenge and `pay` for paying it
+with an approved Link spend request.
 
-Create the shared-payment-token spend request first, then store the returned
-continuation in trusted application state while the user approves:
+Decode the merchant's `WWW-Authenticate` header, then use the regular
+`spendRequests` resource to create and approve a shared-payment-token request:
 
 ```ts
-const prepared = await link.mpp.createSpendRequest({
-  url: 'https://merchant.example/api/purchase',
+const approvedChallenge = response.headers.get('www-authenticate')!;
+const challenge = link.mpp.decodeChallenge(approvedChallenge);
+const paymentMethods = await link.paymentMethods.list();
+
+const spendRequest = await link.spendRequests.create({
+  payment_details: paymentMethods[0].id,
+  credential_type: 'shared_payment_token',
+  network_id: challenge.network_id,
+  amount: Number(challenge.request_json.amount),
+  currency: String(challenge.request_json.currency),
   context:
     'The user asked the agent to buy the selected item from Merchant after reviewing the Link approval.',
+  request_approval: true,
 });
 
-if ('spendRequest' in prepared) {
-  await saveTrustedState(prepared);
-  await sendToUser(prepared.spendRequest.approval_url!);
-} else {
-  // The endpoint did not require payment.
-  console.log(prepared.status, prepared.body);
-}
+await sendToUser(spendRequest.approval_url!);
+```
 
-// In a later run, after checking that the request is approved:
-const state = await loadTrustedState();
+After confirming that the spend request is approved, pass its ID to `pay`.
+Supplying the original challenge pins the approved payment details and causes
+the SDK to reject a changed challenge:
+
+```ts
 const paid = await link.mpp.pay({
-  ...state.request,
-  spendRequestId: state.spendRequest.id,
-  approvedChallenge: state.approvedChallenge,
+  url: 'https://merchant.example/api/purchase',
+  method: 'POST',
+  body: JSON.stringify({ sku: 'sku_123' }),
+  headers: { 'Content-Type': 'application/json' },
+  spendRequestId: spendRequest.id,
+  approvedChallenge,
 });
 ```
 
-Advanced callers can also use `probe`, `decodeChallenge`, and
-`payWithSharedPaymentToken`. Remote URLs must use HTTPS; plain HTTP is allowed
-only for loopback development.
+Remote URLs must use HTTPS; plain HTTP is allowed only for loopback
+development.
 
 ## Configuration
 

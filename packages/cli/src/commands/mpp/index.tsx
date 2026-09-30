@@ -8,6 +8,7 @@ import { shellCommand, shellQuote } from '../../utils/shell-quote';
 import { DecodeChallengeView } from './decode-view';
 import {
   buildHeaders,
+  type CliMppResource,
   MppPay,
   type PayResult,
   runMppPayWithSpendRequest,
@@ -33,6 +34,7 @@ export function createMppCli(
   authStorage?: CliAuthStorage,
   envAccessToken?: string,
 ) {
+  const cliMpp = mpp as CliMppResource;
   const cli = Cli.create('mpp', {
     description: 'Machine payment protocol (MPP) commands',
   });
@@ -67,7 +69,7 @@ export function createMppCli(
             amountOverride={opts.amount}
             paymentMethodId={opts.paymentMethodId}
             test={opts.test}
-            mpp={mpp}
+            mpp={cliMpp}
             spendRequests={spendRequests}
             onComplete={(result) => {
               capturedResult = result;
@@ -100,7 +102,7 @@ export function createMppCli(
         });
       }
 
-      const prepared = await mpp.createSpendRequest({
+      const prepared = await cliMpp.createSpendRequest({
         url,
         ...(method !== undefined && { method }),
         ...(data !== undefined && { body: data }),

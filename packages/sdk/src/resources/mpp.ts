@@ -11,13 +11,10 @@ import type {
   IMppResource,
   IPaymentMethodsResource,
   ISpendRequestResource,
-  MppCreateSpendRequestOptions,
   MppPaymentResult,
   MppPayOptions,
-  MppPayWithSharedPaymentTokenOptions,
   MppProbeResult,
   MppRequestOptions,
-  MppSpendRequestResult,
 } from '@/resources/interfaces';
 import { PaymentMethodsResource } from '@/resources/payment-methods';
 import { SpendRequestResource } from '@/resources/spend-request';
@@ -45,6 +42,30 @@ interface NormalizedMppRequest {
   method: string;
   headers: Headers;
   body: string | undefined;
+}
+
+interface MppCreateSpendRequestOptions extends MppRequestOptions {
+  context: string;
+  amount?: number;
+  paymentMethodId?: string;
+  test?: boolean;
+  onStep?: (step: import('@/resources/interfaces').MppPaymentStep) => void;
+}
+
+interface MppSpendRequestResult {
+  spendRequest: import('@/types').SpendRequest;
+  request: {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body?: string;
+  };
+  approvedChallenge: string;
+}
+
+interface MppPayWithSharedPaymentTokenOptions extends MppRequestOptions {
+  sharedPaymentToken: string;
+  approvedChallenge?: string;
 }
 
 const SPT_RETRIEVAL_DELAYS_MS = [
@@ -253,6 +274,7 @@ export class MppResource implements IMppResource {
     };
   }
 
+  /** @internal Used by the CLI to orchestrate its interactive approval flow. */
   async createSpendRequest(
     options: MppCreateSpendRequestOptions,
   ): Promise<MppSpendRequestResult | MppPaymentResult> {
@@ -319,7 +341,7 @@ export class MppResource implements IMppResource {
     });
   }
 
-  async payWithSharedPaymentToken(
+  private async payWithSharedPaymentToken(
     options: MppPayWithSharedPaymentTokenOptions,
   ): Promise<MppPaymentResult> {
     const request = normalizeRequest(options);

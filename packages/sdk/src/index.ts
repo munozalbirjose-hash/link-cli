@@ -15,6 +15,5 @@ export {
   parseHolderPublicJwk,
 } from './resources/holder-jwk';
 export * from './resources/interfaces';
-export * from './resources/mpp';
 export { getDuplicateSpendRequest } from './resources/spend-request';
 export * from './types/index';

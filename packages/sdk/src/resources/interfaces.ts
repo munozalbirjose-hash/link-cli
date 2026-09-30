@@ -118,21 +118,8 @@ export interface MppRequestOptions {
   headers?: HeadersInit;
 }
 
-export interface MppCreateSpendRequestOptions extends MppRequestOptions {
-  context: string;
-  amount?: number;
-  paymentMethodId?: string;
-  test?: boolean;
-  onStep?: (step: MppPaymentStep) => void;
-}
-
 export interface MppPayOptions extends MppRequestOptions {
   spendRequestId: string;
-  approvedChallenge?: string;
-}
-
-export interface MppPayWithSharedPaymentTokenOptions extends MppRequestOptions {
-  sharedPaymentToken: string;
   approvedChallenge?: string;
 }
 
@@ -162,27 +149,9 @@ export interface DecodedStripeChallenge {
   request_json: Record<string, unknown>;
 }
 
-export interface MppSpendRequestResult {
-  spendRequest: SpendRequest;
-  request: {
-    url: string;
-    method: string;
-    headers: Record<string, string>;
-    body?: string;
-  };
-  approvedChallenge: string;
-}
-
 export interface IMppResource {
   decodeChallenge(challengeHeader: string): DecodedStripeChallenge;
-  probe(options: MppRequestOptions): Promise<MppProbeResult>;
-  createSpendRequest(
-    options: MppCreateSpendRequestOptions,
-  ): Promise<MppSpendRequestResult | MppPaymentResult>;
   pay(options: MppPayOptions): Promise<MppPaymentResult>;
-  payWithSharedPaymentToken(
-    options: MppPayWithSharedPaymentTokenOptions,
-  ): Promise<MppPaymentResult>;
 }
 
 export interface IPaymentMethodsResource {

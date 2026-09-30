@@ -3,6 +3,8 @@ import type {
   ISpendRequestResource,
   MppPaymentResult,
   MppPaymentStep,
+  MppRequestOptions,
+  SpendRequest,
 } from '@stripe/link-sdk';
 import { Box, Text, useInput } from 'ink';
 import Spinner from 'ink-spinner';
@@ -13,6 +15,30 @@ import { sanitizeDeep } from '../../utils/sanitize-text';
 
 export type PayResult = MppPaymentResult;
 export type Step = MppPaymentStep;
+
+export interface CliMppResource extends IMppResource {
+  createSpendRequest(
+    options: MppRequestOptions & {
+      context: string;
+      amount?: number;
+      paymentMethodId?: string;
+      test?: boolean;
+      onStep?: (step: Step) => void;
+    },
+  ): Promise<
+    | MppPaymentResult
+    | {
+        spendRequest: SpendRequest;
+        request: {
+          url: string;
+          method: string;
+          headers: Record<string, string>;
+          body?: string;
+        };
+        approvedChallenge: string;
+      }
+  >;
+}
 
 declare const __CLI_VERSION__: string;
 
@@ -65,7 +91,7 @@ export interface MppPayFullFlowOptions {
   amountOverride: number | undefined;
   paymentMethodId: string | undefined;
   test: boolean;
-  mpp: IMppResource;
+  mpp: CliMppResource;
   spendRequests: ISpendRequestResource;
   onStep?: (step: Step) => void;
   onApprovalUrl?: (url: string) => void;
@@ -163,7 +189,7 @@ export function MppPay({
   amountOverride?: number;
   paymentMethodId?: string;
   test?: boolean;
-  mpp: IMppResource;
+  mpp: CliMppResource;
   spendRequests: ISpendRequestResource;
   onComplete: (result: PayResult | null) => void;
 }) {

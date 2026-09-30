@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   IPaymentMethodsResource,
   ISpendRequestResource,
+  MppPaymentResult,
 } from '@/resources/interfaces';
 import { decodeStripeChallenge, MppResource } from '@/resources/mpp';
 
@@ -39,6 +40,23 @@ function resource(
     { accessToken: 'test_token', fetch },
     { spendRequests, paymentMethods },
   );
+}
+
+function payWithSharedPaymentToken(
+  mpp: MppResource,
+  options: {
+    url: string;
+    method?: string;
+    body?: string;
+    headers?: HeadersInit;
+    sharedPaymentToken: string;
+    approvedChallenge?: string;
+  },
+): Promise<MppPaymentResult> {
+  const internal = mpp as unknown as {
+    payWithSharedPaymentToken(value: typeof options): Promise<MppPaymentResult>;
+  };
+  return internal.payWithSharedPaymentToken(options);
 }
 
 afterEach(() => {
@@ -146,7 +164,7 @@ describe('MppResource', () => {
       .fn()
       .mockResolvedValueOnce(challengeResponse())
       .mockResolvedValueOnce(new Response('paid'));
-    const result = await resource(fetch).payWithSharedPaymentToken({
+    const result = await payWithSharedPaymentToken(resource(fetch), {
       url: 'https://merchant.example/pay',
       sharedPaymentToken: 'spt_test_123',
     });
@@ -167,7 +185,7 @@ describe('MppResource', () => {
         }),
       );
     await expect(
-      resource(fetch).payWithSharedPaymentToken({
+      payWithSharedPaymentToken(resource(fetch), {
         url: 'https://merchant.example/pay',
         sharedPaymentToken: 'spt_test_123',
         headers: { Authorization: 'Bearer caller-value' },
@@ -187,7 +205,7 @@ describe('MppResource', () => {
       .fn()
       .mockResolvedValueOnce(challengeResponse(sessionHeader))
       .mockResolvedValueOnce(new Response('opened'));
-    await resource(fetch).payWithSharedPaymentToken({
+    await payWithSharedPaymentToken(resource(fetch), {
       url: 'https://merchant.example/session',
       sharedPaymentToken: 'spt_test_123',
     });
@@ -207,7 +225,7 @@ describe('MppResource', () => {
     const response = challengeResponse(changed);
     const fetch = vi.fn().mockResolvedValueOnce(response);
     await expect(
-      resource(fetch).payWithSharedPaymentToken({
+      payWithSharedPaymentToken(resource(fetch), {
         url: 'https://merchant.example/pay',
         sharedPaymentToken: 'spt_test_123',
         approvedChallenge: HEADER,
@@ -228,7 +246,7 @@ describe('MppResource', () => {
       .mockResolvedValueOnce(challengeResponse(refreshed))
       .mockResolvedValueOnce(new Response('paid'));
     await expect(
-      resource(fetch).payWithSharedPaymentToken({
+      payWithSharedPaymentToken(resource(fetch), {
         url: 'https://merchant.example/pay',
         sharedPaymentToken: 'spt_test_123',
         approvedChallenge: HEADER,
@@ -252,7 +270,7 @@ describe('MppResource', () => {
     const response = challengeResponse(changed);
     const fetch = vi.fn().mockResolvedValueOnce(response);
     await expect(
-      resource(fetch).payWithSharedPaymentToken({
+      payWithSharedPaymentToken(resource(fetch), {
         url: 'https://merchant.example/pay',
         sharedPaymentToken: 'spt_test_123',
         approvedChallenge: HEADER,

@@ -88,6 +88,23 @@ class UpdateSpendRequestParams(TypedDict, total=False):
     totals: Sequence[TotalParams] | None
 
 
+class EditableShippingAddress(TypedDict, total=False):
+    """Omitted fields stay unchanged; empty strings request clearing."""
+
+    name: str
+    country_code: str
+    line_1: str
+    line_2: str
+    locality: str
+    administrative_area: str
+    postal_code: str
+
+
+class UpdateShippingAddressParams(TypedDict, total=False):
+    address: EditableShippingAddress
+    is_default: bool
+
+
 class ListSpendRequestsParams(TypedDict, total=False):
     include_history: bool
 

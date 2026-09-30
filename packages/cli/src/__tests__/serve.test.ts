@@ -205,6 +205,45 @@ describe('serve command security', () => {
     expect(apiRequests).toHaveLength(0);
   });
 
+  it('discovers only editable shipping-address update fields over MCP', async () => {
+    await initializeMcp();
+    const res = await request('/mcp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: {
+          name: 'get_tool_details',
+          arguments: { name: 'shipping-address_update' },
+        },
+      }),
+    });
+    expect(res.status).toBe(200);
+    const result = JSON.parse(res.body).result;
+    const details = JSON.parse(result.content[0].text);
+    expect(details.name).toBe('shipping-address_update');
+    expect(Object.keys(details.inputSchema.properties).sort()).toEqual(
+      [
+        'id',
+        'name',
+        'country-code',
+        'line-1',
+        'line-2',
+        'locality',
+        'administrative-area',
+        'postal-code',
+        'default',
+      ].sort(),
+    );
+    expect(details.inputSchema.required).toEqual(['id']);
+    expect(apiRequests).toHaveLength(0);
+  });
+
   it('404s a state-changing command path and never uses the token', async () => {
     const res = await request('/spend-request/update/spr_poc_123', {
       method: 'POST',

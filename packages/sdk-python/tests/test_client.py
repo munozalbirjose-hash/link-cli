@@ -506,7 +506,7 @@ def test_matching_client_signatures() -> None:
                     "request_approval",
                 ],
                 "payment_methods": ["list"],
-                "shipping_addresses": ["list"],
+                "shipping_addresses": ["list", "update"],
                 "user_info": ["retrieve"],
                 "transactions": ["list"],
                 "sources": ["list"],

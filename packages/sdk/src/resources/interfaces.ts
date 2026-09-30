@@ -15,6 +15,7 @@ import type {
   UcpCheckout,
   UcpCheckoutWithSpendRequest,
   UcpSearchResult,
+  UpdateShippingAddressParams,
   UserInfo,
   WebBotAuthBlock,
 } from '@/types/index';
@@ -115,6 +116,10 @@ export interface UpdatePaymentMethodParams {
 
 export interface IShippingAddressResource {
   list(): Promise<ShippingAddressRecord[]>;
+  update(
+    id: string,
+    params: UpdateShippingAddressParams,
+  ): Promise<ShippingAddressRecord>;
 }
 
 export interface IUserInfoResource {

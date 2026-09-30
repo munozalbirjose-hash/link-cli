@@ -208,11 +208,28 @@ try {
 }
 ```
 
+## Update shipping addresses
+
+```ts
+const updated = await link.shippingAddresses.update('addr_123', {
+  address: { line_2: '', locality: 'Boston' },
+});
+await link.shippingAddresses.update('addr_123', { is_default: false });
+```
+
+Updates require a token with `write_address` and return a `ShippingAddressRecord`.
+`UpdateShippingAddressParams` accepts an optional `address: EditableShippingAddress`
+and optional `is_default`. Address fields are `name`, `country_code`, `line_1`,
+`line_2`, `locality`, `administrative_area`, and `postal_code`, each an optional
+string. Omitted fields stay unchanged; empty strings request clearing. Request
+fields do not accept `null`. At least one editable field or default status is
+required. The API validates country-specific address requirements.
+
 ## Client resources
 
 - `spendRequests` — create, approve, retrieve, update, cancel, and list
 - `paymentMethods` — list Link payment methods
-- `shippingAddresses` — list shipping addresses
+- `shippingAddresses` — list and update shipping addresses
 - `userInfo` — retrieve Link user information, including the stable `id` when returned by the API
 - `transactions` — list transactions
 - `sources` — list connected sources

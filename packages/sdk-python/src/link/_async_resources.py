@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import builtins
 from collections.abc import Mapping, Sequence
+from typing import Unpack
 
 from . import _operations as op
 from ._transport import AsyncTransport
@@ -34,6 +35,7 @@ from .params import (
     ListSourcesParams,
     ListTransactionsParams,
     TotalParams,
+    UpdateShippingAddressParams,
     UpdateSpendRequestParams,
 )
 
@@ -157,6 +159,12 @@ class AsyncShippingAddressesResource:
     async def list(self) -> builtins.list[ShippingAddressRecord]:
         """List shipping addresses."""
         return await self._transport.request(op.shipping_addresses())
+
+    async def update(
+        self, id: str, **params: Unpack[UpdateShippingAddressParams]
+    ) -> ShippingAddressRecord:
+        """Update supplied fields only; empty strings request clearing."""
+        return await self._transport.request(op.shipping_address_update(id, params))
 
 
 class AsyncUserInfoResource:

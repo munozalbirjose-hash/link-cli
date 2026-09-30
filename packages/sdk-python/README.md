@@ -169,6 +169,24 @@ Keep returned card and payment-token credentials out of model context, logs,
 and user-visible messages. Credential fields are omitted from model `repr`,
 but `model_dump()` and `model_dump_json()` include them.
 
+## Update shipping addresses
+
+```python
+from link import EditableShippingAddress, UpdateShippingAddressParams
+
+address: EditableShippingAddress = {"line_2": "", "locality": "Boston"}
+params: UpdateShippingAddressParams = {"address": address}
+updated = client.shipping_addresses.update("addr_123", **params)
+updated = await async_client.shipping_addresses.update("addr_123", is_default=False)
+```
+
+Both client styles return the updated `ShippingAddressRecord` and require a token
+with `write_address`. Editable address fields are `name`, `country_code`, `line_1`,
+`line_2`, `locality`, `administrative_area`, and `postal_code`. Omitted keys stay
+unchanged; empty strings request clearing. Explicit `None` is not accepted.
+Default-only updates can omit `address`. At least one editable field or default
+status is required; the API validates country-specific address requirements.
+
 ## Resources
 
 Both client styles expose the following resources. Arguments after a resource
@@ -178,7 +196,7 @@ ID are keyword-only. List methods return one API page without auto-pagination.
 | --- | --- |
 | `spend_requests` | `create`, `update`, `retrieve`, `cancel` → `SpendRequest`; `retrieve` returns `None` on 404. `list` → list; `request_approval` → `RequestApprovalResponse`. |
 | `payment_methods` | `list` → `list[PaymentMethod]` |
-| `shipping_addresses` | `list` → `list[ShippingAddressRecord]` |
+| `shipping_addresses` | `list` → `list[ShippingAddressRecord]`; `update` → `ShippingAddressRecord` |
 | `user_info` | `retrieve` → `UserInfo` |
 | `transactions` | `list` → `TransactionsPage` |
 | `sources` | `list` → `SourcesPage` |

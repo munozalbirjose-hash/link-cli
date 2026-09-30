@@ -202,6 +202,48 @@ def shipping_addresses() -> Request[list[ShippingAddressRecord]]:
     )
 
 
+def shipping_address_update(
+    id: str, params: Mapping[str, Any]
+) -> Request[ShippingAddressRecord]:
+    body: dict[str, Any] = {}
+    if "address" in params:
+        address = params["address"]
+        if not isinstance(address, Mapping):
+            raise LinkSDKError("address must be an object")
+        editable = {}
+        for field in (
+            "name",
+            "country_code",
+            "line_1",
+            "line_2",
+            "locality",
+            "administrative_area",
+            "postal_code",
+        ):
+            if field in address:
+                if not isinstance(address[field], str):
+                    raise LinkSDKError(f"address.{field} must be a string")
+                editable[field] = address[field]
+        if editable:
+            body["address"] = editable
+    if "is_default" in params:
+        if not isinstance(params["is_default"], bool):
+            raise LinkSDKError("is_default must be a boolean")
+        body["is_default"] = params["is_default"]
+    if not body:
+        raise LinkSDKError("Provide at least one address field or default status")
+    segment = quote(id, safe="")
+    if id in (".", ".."):
+        segment = segment.replace(".", "%2E")
+    return Request(
+        "update shipping address",
+        "POST",
+        "/shipping_addresses/" + segment,
+        ShippingAddressRecord.model_validate,
+        body=body,
+    )
+
+
 def user_info() -> Request[UserInfo]:
     return Request("retrieve user info", "GET", "/userinfo", _userinfo)
 

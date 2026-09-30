@@ -74,6 +74,7 @@ from .params import (
     AsyncAccessTokenProvider,
     CreateReportParams,
     CreateSpendRequestParams,
+    EditableShippingAddress,
     GetAccessTokenOptions,
     LineItemParams,
     ListBalancesParams,
@@ -82,6 +83,7 @@ from .params import (
     ListTransactionsParams,
     RetrieveSpendRequestParams,
     TotalParams,
+    UpdateShippingAddressParams,
     UpdateSpendRequestParams,
 )
 
@@ -129,6 +131,8 @@ __all__ = [
     "PaymentMethod",
     "ShippingAddress",
     "ShippingAddressRecord",
+    "EditableShippingAddress",
+    "UpdateShippingAddressParams",
     "Transaction",
     "TransactionsPage",
     "Source",

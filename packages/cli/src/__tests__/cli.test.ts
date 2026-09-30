@@ -4,7 +4,11 @@ import http from 'node:http';
 import os from 'node:os';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { storage } from '../auth/storage';
+import { Storage } from '../auth/storage';
+
+// Keep subprocess fixture credentials separate from the developer's session.
+const authDirectory = fs.mkdtempSync(`${os.tmpdir()}/link-cli-auth-test-`);
+const storage = new Storage({ cwd: authDirectory });
 
 const execFileAsync = promisify(execFile);
 
@@ -87,7 +91,7 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  storage.clearAll();
+  fs.rmSync(authDirectory, { recursive: true, force: true });
 });
 
 // ─── Production mode tests (real HTTP against local mock server) ────────────
@@ -174,6 +178,7 @@ async function runShell(command: string): Promise<CliResult> {
   try {
     const { stdout, stderr } = await execFileAsync('bash', ['-c', command], {
       timeout: 10_000,
+      env: { ...process.env, LINK_AUTH_FILE: storage.getPath() },
     });
     return { stdout, stderr, exitCode: 0 };
   } catch (err: unknown) {
@@ -200,6 +205,7 @@ async function runProdCliWithEnv(
           ...EMPTY_AGENT_ENV,
           LINK_API_BASE_URL: `http://127.0.0.1:${serverPort}`,
           LINK_AUTH_BASE_URL: `http://127.0.0.1:${serverPort}`,
+          LINK_AUTH_FILE: storage.getPath(),
           XDG_DATA_HOME: '/tmp/link-cli-test-empty',
           ...extraEnv,
         },
@@ -1801,6 +1807,196 @@ describe('production mode', () => {
       expect(result.exitCode).toBe(1);
       expect(result.stdout + result.stderr).toContain(message);
     });
+  });
+
+  describe('shipping-address update', () => {
+    const updated = {
+      id: 'shad_123',
+      is_default: false,
+      nickname: null,
+      address: {
+        name: 'Jane Doe',
+        line_1: '123 Main St',
+        line_2: '',
+        locality: 'Boston',
+        country_code: 'US',
+      },
+    };
+
+    it('sends editable fields and returns the updated record', async () => {
+      setResponseForUrl('/shipping_addresses/shad_123', 200, updated);
+      const result = await runProdCli(
+        'shipping-address',
+        'update',
+        'shad_123',
+        '--name',
+        ' Jane Doe ',
+        '--country-code',
+        'US',
+        '--line-1',
+        '123 Main St',
+        '--line-2',
+        '',
+        '--locality',
+        'Boston',
+        '--administrative-area',
+        'MA',
+        '--postal-code',
+        '02110',
+        '--no-default',
+        '--format',
+        'json',
+      );
+      expect(result.exitCode).toBe(0);
+      expect(parseJson(result.stdout)).toEqual(updated);
+      expect(requests).toHaveLength(1);
+      expect(lastRequest.method).toBe('POST');
+      expect(lastRequest.headers.authorization).toBe(
+        'Bearer prod_test_access_token',
+      );
+      expect(lastRequest.headers['content-type']).toBe('application/json');
+      expect(JSON.parse(lastRequest.body)).toEqual({
+        address: {
+          name: ' Jane Doe ',
+          country_code: 'US',
+          line_1: '123 Main St',
+          line_2: '',
+          locality: 'Boston',
+          administrative_area: 'MA',
+          postal_code: '02110',
+        },
+        is_default: false,
+      });
+    });
+
+    it.each([
+      [['--line-2', ''], { address: { line_2: '' } }],
+      [['--locality', 'Boston'], { address: { locality: 'Boston' } }],
+      [['--default'], { is_default: true }],
+      [['--no-default'], { is_default: false }],
+    ] as const)('preserves presence for %j', async (flags, body) => {
+      setResponseForUrl('/shipping_addresses/shad_123', 200, updated);
+      const result = await runProdCli(
+        'shipping-address',
+        'update',
+        'shad_123',
+        ...flags,
+        '--json',
+      );
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(lastRequest.body)).toEqual(body);
+    });
+
+    it.each(['json', 'yaml', 'toon'])('supports %s output', async (format) => {
+      setResponseForUrl('/shipping_addresses/shad_123', 200, updated);
+      const result = await runProdCli(
+        'shipping-address',
+        'update',
+        'shad_123',
+        '--no-default',
+        '--format',
+        format,
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('shad_123');
+      expect(result.stdout).not.toContain('prod_test_access_token');
+    });
+
+    it.each([
+      ['shad_123'],
+      [],
+      ['shad_123', '--nickname', 'Home'],
+      ['shad_123', '--dependent-locality', 'hidden'],
+      ['shad_123', '--sorting-code', 'hidden'],
+    ])('rejects invalid input without a request: %j', async (...args) => {
+      const result = await runProdCli(
+        'shipping-address',
+        'update',
+        ...args,
+        '--json',
+      );
+      expect(result.exitCode).toBe(1);
+      expect(requests).toHaveLength(0);
+    });
+
+    it('requires authentication', async () => {
+      storage.clearTokens();
+      const result = await runProdCli(
+        'shipping-address',
+        'update',
+        'shad_123',
+        '--no-default',
+        '--json',
+      );
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout + result.stderr).toContain('Not authenticated');
+      expect(requests).toHaveLength(0);
+    });
+
+    it('adds upgrade guidance to the missing address scope response', async () => {
+      const message = 'Access token is missing required scopes: write_address';
+      setResponseForUrl('/shipping_addresses/shad_123', 403, {
+        error: { message },
+      });
+      const result = await runProdCli(
+        'shipping-address',
+        'update',
+        'shad_123',
+        '--no-default',
+        '--json',
+      );
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout + result.stderr).toContain(message);
+      expect(result.stdout + result.stderr).toContain(
+        'auth upgrade --scope write_address',
+      );
+    });
+
+    it.each([400, 403, 404, 500])(
+      'preserves unrelated %s errors',
+      async (status) => {
+        setResponseForUrl('/shipping_addresses/shad_123', status, {
+          error: { message: 'Update unavailable' },
+        });
+        const result = await runProdCli(
+          'shipping-address',
+          'update',
+          'shad_123',
+          '--no-default',
+          '--json',
+        );
+        expect(result.exitCode).toBe(1);
+        expect(result.stdout + result.stderr).toContain('Update unavailable');
+        expect(result.stdout + result.stderr).not.toContain('auth upgrade');
+      },
+    );
+
+    it.each(['--help', '--schema'])(
+      'discovers approved fields through %s',
+      async (flag) => {
+        const result = await runProdCli('shipping-address', 'update', flag);
+        expect(result.exitCode).toBe(0);
+        for (const field of [
+          'country-code',
+          'line-1',
+          'line-2',
+          'locality',
+          'administrative-area',
+          'postal-code',
+          'default',
+        ]) {
+          expect(result.stdout).toContain(field);
+        }
+        for (const field of [
+          'nickname',
+          'dependent_locality',
+          'sorting_code',
+        ]) {
+          expect(result.stdout).not.toContain(field);
+        }
+        expect(requests).toHaveLength(0);
+      },
+    );
   });
 
   describe('shipping-address list', () => {

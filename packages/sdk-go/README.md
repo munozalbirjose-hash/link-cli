@@ -238,11 +238,32 @@ if errors.As(err, &linkError) {
 }
 ```
 
+## Update shipping addresses
+
+```go
+emptyLine, isDefault := "", false
+updated, err := client.ShippingAddresses.Update(ctx, "addr_123", link.UpdateShippingAddressParams{
+	Address: &link.EditableShippingAddress{Line2: &emptyLine},
+	IsDefault: &isDefault,
+})
+if err != nil {
+	return err
+}
+fmt.Println(updated.ID)
+```
+
+Updates require `write_address` and return the updated `ShippingAddressRecord`.
+Editable address fields are `Name`, `CountryCode`, `Line1`, `Line2`, `Locality`,
+`AdministrativeArea`, and `PostalCode`. Nil pointers preserve existing values;
+a pointer to an empty string requests clearing. A non-nil `IsDefault` sends
+either `true` or `false`. Default-only updates can omit `Address`. At least one
+editable field or default status is required; the API validates address contents.
+
 ## Client resources
 
 - `SpendRequests` — create, approve, retrieve, update, cancel, and list
 - `PaymentMethods` — list Link payment methods
-- `ShippingAddresses` — list shipping addresses
+- `ShippingAddresses` — list and update shipping addresses
 - `UserInfo` — retrieve Link user information, including the stable `ID` when returned by the API
 - `Transactions` — list transactions
 - `Sources` — list connected sources

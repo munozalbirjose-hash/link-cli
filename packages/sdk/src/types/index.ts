@@ -288,6 +288,22 @@ export interface ShippingAddress {
   country_code: string | null;
 }
 
+/** Editable fields only. Omission preserves a value; an empty string clears it. */
+export interface EditableShippingAddress {
+  name?: string;
+  country_code?: string;
+  line_1?: string;
+  line_2?: string;
+  locality?: string;
+  administrative_area?: string;
+  postal_code?: string;
+}
+
+export interface UpdateShippingAddressParams {
+  address?: EditableShippingAddress;
+  is_default?: boolean;
+}
+
 export interface ShippingAddressRecord {
   id: string;
   is_default: boolean;

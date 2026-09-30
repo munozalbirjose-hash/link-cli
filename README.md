@@ -209,6 +209,34 @@ link-cli shipping-address list
 
 Returns the shipping addresses saved to your Link account. The response preserves nullable `nickname`, `address`, and address fields exactly as returned by the API.
 
+### Update a shipping address
+
+Grant address-write access explicitly; upgrading retains the stored session's
+existing scopes and authorization details:
+
+```bash
+link-cli auth upgrade --scope write_address
+link-cli shipping-address update <address-id> --locality Boston --postal-code 02110
+link-cli shipping-address update <address-id> --line-2 "" --format json
+link-cli shipping-address update <address-id> --default
+link-cli shipping-address update <address-id> --no-default
+```
+
+Only supplied fields change. An omitted `--line-2` preserves the existing value;
+`--line-2 ""` requests clearing it. The command returns the updated saved address.
+At least one address field or default status must be supplied. Country-specific
+address validation is performed by the API.
+
+Available options are `--name`, `--country-code`, `--line-1`, `--line-2`,
+`--locality`, `--administrative-area`, `--postal-code`, and
+`--default`/`--no-default`. All are optional; nickname, dependent locality, and
+sorting code are not editable. Use `shipping-address update --help` or `--schema`
+to discover the command, including through MCP.
+
+Default logins do not request `write_address`. If `LINK_ACCESS_TOKEN` is set,
+replace it with a token carrying that scope or unset it to use the upgraded
+stored session.
+
 ### Create a spend request
 
 Create a spend request with merchant details, line items, and amounts. If `--payment-method-id` is omitted, your default payment method will be used, or the first eligible one if no default is set:

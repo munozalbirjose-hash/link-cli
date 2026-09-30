@@ -1,6 +1,7 @@
+import { decodeStripeChallenge } from '@stripe/link-sdk';
 import { render } from 'ink-testing-library';
 import { describe, expect, it } from 'vitest';
-import { decodeStripeChallenge } from './decode';
+import { sanitizeDeep } from '../../utils/sanitize-text';
 import { DecodeChallengeView } from './decode-view';
 
 const ESCAPE_PAYLOAD = '\x1b[2JEvil\rHidden';
@@ -31,7 +32,7 @@ describe('DecodeChallengeView', () => {
       })}"`,
     ].join(' ');
 
-    const decoded = decodeStripeChallenge(header);
+    const decoded = sanitizeDeep(decodeStripeChallenge(header));
     const { lastFrame } = render(<DecodeChallengeView decoded={decoded} />);
 
     const frame = lastFrame() ?? '';

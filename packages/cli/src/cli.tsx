@@ -144,12 +144,7 @@ cli.command(
   ),
 );
 cli.command(
-  createMppCli(
-    spendRequestRepo,
-    () => factory.createPaymentMethodsResource(),
-    authStorage,
-    envAccessToken,
-  ),
+  createMppCli(factory.createMppResource(), authStorage, envAccessToken),
 );
 // cli.command(
 //   createWebBotAuthCli(() => factory.createWebBotAuthResource(), authStorage),
@@ -191,6 +186,7 @@ cli.command(
     authRepo,
     spendRequestRepo,
     () => factory.createPaymentMethodsResource(),
+    factory.createMppResource(),
     authStorage,
   ),
 );
@@ -199,6 +195,7 @@ cli.command(
     authRepo,
     spendRequestRepo,
     () => factory.createPaymentMethodsResource(),
+    factory.createMppResource(),
     authStorage,
   ),
 );

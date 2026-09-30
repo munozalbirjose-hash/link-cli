@@ -1,6 +1,6 @@
+import type { DecodedStripeChallenge } from '@stripe/link-sdk';
 import { Box, Text } from 'ink';
 import type React from 'react';
-import type { DecodedStripeChallenge } from './decode';
 
 export function DecodeChallengeView({
   decoded,

@@ -162,6 +162,58 @@ polled automatically. For any other resolution, surface the action to the user
 and follow its instructions. Keep returned card or shared-payment-token
 credentials out of model context, logs, and user-visible messages.
 
+## Machine payments (MPP)
+
+The SDK exposes the same end-to-end Machine Payment Protocol flow as
+`link-cli mpp pay`. It probes the merchant, creates a shared-payment-token
+spend request, waits for approval, verifies that the approved challenge has
+not changed, and submits the credential without forwarding it across a
+redirect.
+
+```ts
+const result = await link.mpp.pay({
+  url: 'https://merchant.example/api/purchase',
+  method: 'POST',
+  body: JSON.stringify({ sku: 'sku_123' }),
+  headers: { 'Content-Type': 'application/json' },
+  context:
+    'The user asked the agent to buy SKU 123 from Merchant for the amount shown in the MPP challenge.',
+  onApprovalUrl: (url) => sendToUser(`Approve this purchase: ${url}`),
+});
+```
+
+For agents that must end a run while the user approves, create the spend
+request without polling and store the returned continuation in trusted
+application state:
+
+```ts
+const prepared = await link.mpp.createSpendRequest({
+  url: 'https://merchant.example/api/purchase',
+  context:
+    'The user asked the agent to buy the selected item from Merchant after reviewing the Link approval.',
+});
+
+if ('spendRequest' in prepared) {
+  await saveTrustedState(prepared);
+  await sendToUser(prepared.spendRequest.approval_url!);
+} else {
+  // The endpoint did not require payment.
+  console.log(prepared.status, prepared.body);
+}
+
+// In a later run, after checking that the request is approved:
+const state = await loadTrustedState();
+const paid = await link.mpp.payWithSpendRequest({
+  ...state.request,
+  spendRequestId: state.spendRequest.id,
+  approvedChallenge: state.approvedChallenge,
+});
+```
+
+Advanced callers can also use `probe`, `decodeChallenge`, and
+`payWithSharedPaymentToken`. Remote URLs must use HTTPS; plain HTTP is allowed
+only for loopback development.
+
 ## Configuration
 
 ```ts
@@ -219,3 +271,4 @@ try {
 - `balances` — list balances
 - `webBotAuth` — sign URLs for Web Bot Auth
 - `reports` — report agent outcomes
+- `mpp` — probe and pay Machine Payment Protocol endpoints with Link approval

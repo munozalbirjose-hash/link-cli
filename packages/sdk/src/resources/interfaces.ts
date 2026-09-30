@@ -103,6 +103,94 @@ export interface ISpendRequestResource {
   ): Promise<SpendRequest | null>;
 }
 
+export type MppPaymentStep =
+  | 'probing'
+  | 'creating'
+  | 'approving'
+  | 'signing'
+  | 'submitting'
+  | 'done';
+
+export interface MppRequestOptions {
+  url: string;
+  method?: string;
+  body?: string;
+  headers?: HeadersInit;
+}
+
+export interface MppPayOptions extends MppRequestOptions {
+  context: string;
+  amount?: number;
+  paymentMethodId?: string;
+  test?: boolean;
+  pollIntervalMs?: number;
+  timeoutMs?: number;
+  onStep?: (step: MppPaymentStep) => void;
+  onApprovalUrl?: (url: string) => void;
+}
+
+export interface MppPayWithSpendRequestOptions extends MppRequestOptions {
+  spendRequestId: string;
+  approvedChallenge?: string;
+}
+
+export interface MppPayWithSharedPaymentTokenOptions extends MppRequestOptions {
+  sharedPaymentToken: string;
+  approvedChallenge?: string;
+}
+
+export interface MppPaymentResult {
+  status: number;
+  headers: Record<string, string>;
+  body: string;
+}
+
+export interface MppProbeResult {
+  url: string;
+  method: string;
+  headers: Headers;
+  body?: string;
+  response: Response;
+}
+
+export interface DecodedStripeChallenge {
+  id: string;
+  realm: string;
+  method: 'stripe';
+  intent: 'charge' | 'session';
+  description?: string;
+  digest?: string;
+  expires?: string;
+  network_id: string;
+  request_json: Record<string, unknown>;
+}
+
+export interface MppSpendRequestResult {
+  spendRequest: SpendRequest;
+  request: {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body?: string;
+  };
+  approvedChallenge: string;
+}
+
+export interface IMppResource {
+  decodeChallenge(challengeHeader: string): DecodedStripeChallenge;
+  probe(options: MppRequestOptions): Promise<MppProbeResult>;
+  createSpendRequest(
+    options: MppPayOptions,
+  ): Promise<MppSpendRequestResult | MppPaymentResult>;
+  pay(options: MppPayOptions): Promise<MppPaymentResult>;
+  payWithSpendRequest(
+    options: MppPayWithSpendRequestOptions,
+  ): Promise<MppPaymentResult>;
+  payWithSharedPaymentToken(
+    options: MppPayWithSharedPaymentTokenOptions,
+  ): Promise<MppPaymentResult>;
+}
+
 export interface IPaymentMethodsResource {
   list(): Promise<PaymentMethod[]>;
   retrieve(id: string): Promise<PaymentMethod | null>;

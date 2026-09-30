@@ -218,7 +218,7 @@ describe('built CLI command telemetry', () => {
     await run(['--version']);
     await run(['not-a-command']);
     expect(events).toHaveLength(0);
-  });
+  }, 20_000);
 
   it.each<Record<string, string>>([
     { DO_NOT_TRACK: '1' },

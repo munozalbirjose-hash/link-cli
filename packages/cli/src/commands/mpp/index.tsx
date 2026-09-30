@@ -1,4 +1,4 @@
-import type { IMppResource } from '@stripe/link-sdk';
+import type { IMppResource, ISpendRequestResource } from '@stripe/link-sdk';
 import { Cli, z } from 'incur';
 import type { CliAuthStorage } from '../../auth/storage';
 import { renderInteractive } from '../../utils/render-interactive';
@@ -29,6 +29,7 @@ export function resolveInteractivePayResult(
 
 export function createMppCli(
   mpp: IMppResource,
+  spendRequests: ISpendRequestResource,
   authStorage?: CliAuthStorage,
   envAccessToken?: string,
 ) {
@@ -67,6 +68,7 @@ export function createMppCli(
             paymentMethodId={opts.paymentMethodId}
             test={opts.test}
             mpp={mpp}
+            spendRequests={spendRequests}
             onComplete={(result) => {
               capturedResult = result;
             }}

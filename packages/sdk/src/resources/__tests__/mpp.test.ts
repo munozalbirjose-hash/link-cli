@@ -270,7 +270,7 @@ describe('MppResource', () => {
     await expect(
       resource(vi.fn(), {
         retrieve,
-      } as unknown as ISpendRequestResource).payWithSpendRequest({
+      } as unknown as ISpendRequestResource).pay({
         url: 'https://merchant.example/pay',
         spendRequestId: 'lsrq_123',
       }),
@@ -302,7 +302,7 @@ describe('MppResource', () => {
       .fn()
       .mockResolvedValueOnce(challengeResponse())
       .mockResolvedValueOnce(new Response('paid'));
-    const promise = resource(fetch, spendRequests).payWithSpendRequest({
+    const promise = resource(fetch, spendRequests).pay({
       url: 'https://merchant.example/pay',
       spendRequestId: 'lsrq_123',
     });
@@ -336,54 +336,5 @@ describe('MppResource', () => {
       spendRequest: { id: 'lsrq_123' },
     });
     expect(JSON.parse(JSON.stringify(prepared))).toEqual(prepared);
-  });
-
-  it('creates, waits for approval, and pays through the full SDK flow', async () => {
-    const create = vi.fn().mockResolvedValue({
-      id: 'lsrq_123',
-      status: 'pending_approval',
-      approval_url: 'https://link.com/approve/lsrq_123',
-    });
-    const retrieve = vi
-      .fn()
-      .mockResolvedValueOnce({ id: 'lsrq_123', status: 'approved' })
-      .mockResolvedValueOnce({
-        id: 'lsrq_123',
-        status: 'approved',
-        shared_payment_token: { id: 'spt_test_123' },
-      });
-    const spendRequests = {
-      create,
-      retrieve,
-    } as unknown as ISpendRequestResource;
-    const paymentMethods = {
-      list: vi
-        .fn()
-        .mockResolvedValue([
-          { id: 'pm_123', is_default: true, type: 'card', name: 'Visa' },
-        ]),
-    } as unknown as IPaymentMethodsResource;
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(challengeResponse())
-      .mockResolvedValueOnce(challengeResponse())
-      .mockResolvedValueOnce(new Response('paid'));
-    const approval = vi.fn();
-    const result = await resource(fetch, spendRequests, paymentMethods).pay({
-      url: 'https://merchant.example/pay',
-      context:
-        'Buy the item the user explicitly selected from this merchant after requesting approval in Link.',
-      onApprovalUrl: approval,
-    });
-    expect(result.body).toBe('paid');
-    expect(approval).toHaveBeenCalledWith('https://link.com/approve/lsrq_123');
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payment_details: 'pm_123',
-        network_id: 'net_001',
-        amount: 1000,
-        currency: 'usd',
-      }),
-    );
   });
 });

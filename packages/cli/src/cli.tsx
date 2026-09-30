@@ -144,7 +144,12 @@ cli.command(
   ),
 );
 cli.command(
-  createMppCli(factory.createMppResource(), authStorage, envAccessToken),
+  createMppCli(
+    factory.createMppResource(),
+    spendRequestRepo,
+    authStorage,
+    envAccessToken,
+  ),
 );
 // cli.command(
 //   createWebBotAuthCli(() => factory.createWebBotAuthResource(), authStorage),

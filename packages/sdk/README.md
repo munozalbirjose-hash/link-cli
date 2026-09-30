@@ -164,27 +164,13 @@ credentials out of model context, logs, and user-visible messages.
 
 ## Machine payments (MPP)
 
-The SDK exposes the same end-to-end Machine Payment Protocol flow as
-`link-cli mpp pay`. It probes the merchant, creates a shared-payment-token
-spend request, waits for approval, verifies that the approved challenge has
-not changed, and submits the credential without forwarding it across a
-redirect.
+The [Machine Payments Protocol](https://mpp.dev) uses HTTP 402 challenges to
+describe a payment required by an API. The SDK can probe an endpoint, create a
+Link spend request for its Stripe challenge, and submit the payment after the
+user approves it.
 
-```ts
-const result = await link.mpp.pay({
-  url: 'https://merchant.example/api/purchase',
-  method: 'POST',
-  body: JSON.stringify({ sku: 'sku_123' }),
-  headers: { 'Content-Type': 'application/json' },
-  context:
-    'The user asked the agent to buy SKU 123 from Merchant for the amount shown in the MPP challenge.',
-  onApprovalUrl: (url) => sendToUser(`Approve this purchase: ${url}`),
-});
-```
-
-For agents that must end a run while the user approves, create the spend
-request without polling and store the returned continuation in trusted
-application state:
+Create the shared-payment-token spend request first, then store the returned
+continuation in trusted application state while the user approves:
 
 ```ts
 const prepared = await link.mpp.createSpendRequest({
@@ -203,7 +189,7 @@ if ('spendRequest' in prepared) {
 
 // In a later run, after checking that the request is approved:
 const state = await loadTrustedState();
-const paid = await link.mpp.payWithSpendRequest({
+const paid = await link.mpp.pay({
   ...state.request,
   spendRequestId: state.spendRequest.id,
   approvedChallenge: state.approvedChallenge,

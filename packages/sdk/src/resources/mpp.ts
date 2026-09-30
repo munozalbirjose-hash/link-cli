@@ -11,10 +11,10 @@ import type {
   IMppResource,
   IPaymentMethodsResource,
   ISpendRequestResource,
+  MppCreateSpendRequestOptions,
   MppPaymentResult,
   MppPayOptions,
   MppPayWithSharedPaymentTokenOptions,
-  MppPayWithSpendRequestOptions,
   MppProbeResult,
   MppRequestOptions,
   MppSpendRequestResult,
@@ -254,7 +254,7 @@ export class MppResource implements IMppResource {
   }
 
   async createSpendRequest(
-    options: MppPayOptions,
+    options: MppCreateSpendRequestOptions,
   ): Promise<MppSpendRequestResult | MppPaymentResult> {
     options.onStep?.('probing');
     const probe = await this.probe(options);
@@ -286,48 +286,6 @@ export class MppResource implements IMppResource {
   }
 
   async pay(options: MppPayOptions): Promise<MppPaymentResult> {
-    options.onStep?.('probing');
-    const probe = await this.probe(options);
-    if (probe.response.status !== 402) {
-      const result = await this.readResult(probe.response);
-      options.onStep?.('done');
-      return result;
-    }
-
-    const prepared = this.parsePreparedPayment(probe);
-    const spendRequest = await this.createLinkSpendRequest(
-      options,
-      prepared.decoded,
-    );
-    options.onStep?.('approving');
-    if (spendRequest.approval_url) {
-      options.onApprovalUrl?.(spendRequest.approval_url);
-    }
-    const approved = await this.pollUntilApproved(spendRequest.id, options);
-    if (approved.status !== 'approved') {
-      throw new Error(
-        `Spend request was not approved (status: ${approved.status})`,
-      );
-    }
-
-    options.onStep?.('signing');
-    const sharedPaymentToken = await this.retrieveSharedPaymentToken(
-      spendRequest.id,
-      true,
-    );
-    options.onStep?.('submitting');
-    const result = await this.payPinnedChallenge(
-      prepared.probe,
-      sharedPaymentToken,
-      prepared.challenge,
-    );
-    options.onStep?.('done');
-    return result;
-  }
-
-  async payWithSpendRequest(
-    options: MppPayWithSpendRequestOptions,
-  ): Promise<MppPaymentResult> {
     const spendRequest = await this.spendRequests.retrieve(
       options.spendRequestId,
       { include: ['shared_payment_token'] },
@@ -466,7 +424,7 @@ export class MppResource implements IMppResource {
   }
 
   private async createLinkSpendRequest(
-    options: MppPayOptions,
+    options: MppCreateSpendRequestOptions,
     decoded: DecodedStripeChallenge,
   ) {
     const challengeAmount = decoded.request_json.amount
@@ -510,26 +468,6 @@ export class MppResource implements IMppResource {
     });
   }
 
-  private async pollUntilApproved(id: string, options: MppPayOptions) {
-    const pollIntervalMs = options.pollIntervalMs ?? 2000;
-    const timeoutMs = options.timeoutMs ?? 300_000;
-    const startTime = Date.now();
-    while (true) {
-      if (Date.now() - startTime > timeoutMs) {
-        throw new Error('Approval polling timed out');
-      }
-      const request = await this.spendRequests.retrieve(id);
-      if (!request) throw new Error(`Spend request ${id} not found`);
-      if (
-        request.status !== 'created' &&
-        request.status !== 'pending_approval'
-      ) {
-        return request;
-      }
-      await sleep(pollIntervalMs);
-    }
-  }
-
   private async retrieveSharedPaymentToken(
     spendRequestId: string,
     includeInitialDelay: boolean,
@@ -550,45 +488,6 @@ export class MppResource implements IMppResource {
       }
     }
     throw new Error('Failed to retrieve shared payment token');
-  }
-
-  private async payPinnedChallenge(
-    probe: MppProbeResult,
-    sharedPaymentToken: string,
-    approvedChallenge?: StripeChallenge,
-  ): Promise<MppPaymentResult> {
-    let current = probe;
-    if (approvedChallenge) {
-      const refreshedResponse = await this.fetchRequest(probe);
-      await probe.response.body?.cancel().catch(() => undefined);
-      if (isRedirectResponse(refreshedResponse)) {
-        await refreshedResponse.body?.cancel();
-        throw new Error(
-          `MPP challenge destination redirected with status ${refreshedResponse.status} after approval`,
-        );
-      }
-      if (refreshedResponse.status !== 402) {
-        return this.readResult(refreshedResponse);
-      }
-      current = { ...probe, response: refreshedResponse };
-      let refreshedChallenge: StripeChallenge;
-      try {
-        refreshedChallenge = challengeFromResponse(refreshedResponse);
-      } catch (error) {
-        await refreshedResponse.body?.cancel();
-        throw error;
-      }
-      if (
-        comparableChallenge(refreshedChallenge) !==
-        comparableChallenge(approvedChallenge)
-      ) {
-        await refreshedResponse.body?.cancel();
-        throw new Error(
-          'MPP challenge changed after approval; refusing to use the approved payment credential',
-        );
-      }
-    }
-    return this.submitPayment(current, sharedPaymentToken);
   }
 
   private async submitPayment(

@@ -118,18 +118,15 @@ export interface MppRequestOptions {
   headers?: HeadersInit;
 }
 
-export interface MppPayOptions extends MppRequestOptions {
+export interface MppCreateSpendRequestOptions extends MppRequestOptions {
   context: string;
   amount?: number;
   paymentMethodId?: string;
   test?: boolean;
-  pollIntervalMs?: number;
-  timeoutMs?: number;
   onStep?: (step: MppPaymentStep) => void;
-  onApprovalUrl?: (url: string) => void;
 }
 
-export interface MppPayWithSpendRequestOptions extends MppRequestOptions {
+export interface MppPayOptions extends MppRequestOptions {
   spendRequestId: string;
   approvedChallenge?: string;
 }
@@ -180,12 +177,9 @@ export interface IMppResource {
   decodeChallenge(challengeHeader: string): DecodedStripeChallenge;
   probe(options: MppRequestOptions): Promise<MppProbeResult>;
   createSpendRequest(
-    options: MppPayOptions,
+    options: MppCreateSpendRequestOptions,
   ): Promise<MppSpendRequestResult | MppPaymentResult>;
   pay(options: MppPayOptions): Promise<MppPaymentResult>;
-  payWithSpendRequest(
-    options: MppPayWithSpendRequestOptions,
-  ): Promise<MppPaymentResult>;
   payWithSharedPaymentToken(
     options: MppPayWithSharedPaymentTokenOptions,
   ): Promise<MppPaymentResult>;

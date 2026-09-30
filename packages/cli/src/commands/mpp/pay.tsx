@@ -1,5 +1,6 @@
 import type {
   IMppResource,
+  ISpendRequestResource,
   MppPaymentResult,
   MppPaymentStep,
 } from '@stripe/link-sdk';
@@ -7,6 +8,7 @@ import { Box, Text, useInput } from 'ink';
 import Spinner from 'ink-spinner';
 import { useEffect, useState } from 'react';
 import { openUrl } from '../../utils/open-url';
+import { pollUntilApproved } from '../../utils/poll-until-approved';
 import { sanitizeDeep } from '../../utils/sanitize-text';
 
 export type PayResult = MppPaymentResult;
@@ -43,7 +45,7 @@ export async function runMppPayWithSpendRequest(
   approvedChallenge?: string,
 ): Promise<PayResult> {
   return sanitizeDeep(
-    await mpp.payWithSpendRequest({
+    await mpp.pay({
       url,
       spendRequestId,
       ...(method !== undefined && { method }),
@@ -64,6 +66,7 @@ export interface MppPayFullFlowOptions {
   paymentMethodId: string | undefined;
   test: boolean;
   mpp: IMppResource;
+  spendRequests: ISpendRequestResource;
   onStep?: (step: Step) => void;
   onApprovalUrl?: (url: string) => void;
 }
@@ -71,26 +74,46 @@ export interface MppPayFullFlowOptions {
 export async function runMppPayFullFlow(
   options: MppPayFullFlowOptions,
 ): Promise<PayResult> {
-  return sanitizeDeep(
-    await options.mpp.pay({
-      url: options.url,
-      ...(options.method !== undefined && { method: options.method }),
-      ...(options.data !== undefined && { body: options.data }),
-      headers: buildHeaders(options.data, options.headers),
-      context: options.context,
-      ...(options.amountOverride !== undefined && {
-        amount: options.amountOverride,
-      }),
-      ...(options.paymentMethodId !== undefined && {
-        paymentMethodId: options.paymentMethodId,
-      }),
-      test: options.test,
-      ...(options.onStep !== undefined && { onStep: options.onStep }),
-      ...(options.onApprovalUrl !== undefined && {
-        onApprovalUrl: options.onApprovalUrl,
-      }),
+  const prepared = await options.mpp.createSpendRequest({
+    url: options.url,
+    ...(options.method !== undefined && { method: options.method }),
+    ...(options.data !== undefined && { body: options.data }),
+    headers: buildHeaders(options.data, options.headers),
+    context: options.context,
+    ...(options.amountOverride !== undefined && {
+      amount: options.amountOverride,
     }),
+    ...(options.paymentMethodId !== undefined && {
+      paymentMethodId: options.paymentMethodId,
+    }),
+    test: options.test,
+    ...(options.onStep !== undefined && { onStep: options.onStep }),
+  });
+  if (!('spendRequest' in prepared)) return sanitizeDeep(prepared);
+
+  options.onStep?.('approving');
+  if (prepared.spendRequest.approval_url) {
+    options.onApprovalUrl?.(prepared.spendRequest.approval_url);
+  }
+  const approved = await pollUntilApproved(
+    options.spendRequests,
+    prepared.spendRequest.id,
   );
+  if (approved.status !== 'approved') {
+    throw new Error(
+      `Spend request was not approved (status: ${approved.status})`,
+    );
+  }
+
+  options.onStep?.('signing');
+  options.onStep?.('submitting');
+  const result = await options.mpp.pay({
+    ...prepared.request,
+    spendRequestId: prepared.spendRequest.id,
+    approvedChallenge: prepared.approvedChallenge,
+  });
+  options.onStep?.('done');
+  return sanitizeDeep(result);
 }
 
 export function MppApprovalPrompt({ approvalUrl }: { approvalUrl: string }) {
@@ -128,6 +151,7 @@ export function MppPay({
   paymentMethodId,
   test,
   mpp,
+  spendRequests,
   onComplete,
 }: {
   url: string;
@@ -140,6 +164,7 @@ export function MppPay({
   paymentMethodId?: string;
   test?: boolean;
   mpp: IMppResource;
+  spendRequests: ISpendRequestResource;
   onComplete: (result: PayResult | null) => void;
 }) {
   const [step, setStep] = useState<Step>(
@@ -179,6 +204,7 @@ export function MppPay({
             paymentMethodId,
             test: test ?? false,
             mpp,
+            spendRequests,
             onStep: setStep,
             onApprovalUrl: setApprovalUrl,
           });
@@ -202,6 +228,7 @@ export function MppPay({
     paymentMethodId,
     test,
     mpp,
+    spendRequests,
     onComplete,
   ]);
 

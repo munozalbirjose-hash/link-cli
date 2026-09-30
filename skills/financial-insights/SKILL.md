@@ -2,7 +2,7 @@
 version: 0.15.1
 name: financial-insights
 description: |
-  Reads a user's Link financial data — transactions, balances, and wallet sources — so agents can answer questions about spending and available source capabilities. Use when the user says "check my balance", "how much did I spend", "show my transactions", "what accounts are connected", "summarize my spending", "recent purchases", or asks about their financial activity, account balances, or linked sources.
+  Reads a user's Link financial data — transactions, balances, wallet sources, and precomputed insights — so agents can answer questions about spending, shopping patterns, and available source capabilities. Use when the user says "check my balance", "how much did I spend", "show my transactions", "what accounts are connected", "summarize my spending", "recent purchases", or asks about their financial activity, account balances, or linked sources.
 allowed-tools:
  - Bash(link-cli:*)
  - Bash(npx --yes @stripe/link-cli:*)
@@ -106,6 +106,7 @@ Use the smallest command set that answers the user’s question.
 | Recent purchases, merchants, spend, transaction history, income, deposits, subscriptions | `link-cli transactions list` |
 | Current available balance, account balance, cash position | `link-cli balances list` |
 | Connected accounts, cards, banks, wallet sources, source metadata | `link-cli sources list` |
+| Precomputed signals, such as top brands per shopping category | `link-cli insights list-available-types`, then `link-cli insights list` |
 
 Examples:
 
@@ -240,9 +241,53 @@ When summarizing sources:
 - Avoid exposing full account numbers, credentials, tokens, or payment instrument details.
 - Prefer labels such as institution, account type, source status, and last updated time when available.
 
+## Insights
+
+Insights are signals Link computes ahead of time from the user's authorized data, such as `top_brand_by_transaction_count_per_category_t180d` (top brands per shopping category over the last 180 days, by transaction count). New types can appear without a CLI release.
+
+If you do not already know the applicable insight ID or its access requirement, discover the available types first:
+
+```bash
+link-cli insights list-available-types --format json
+```
+
+Each type has an `id`, a `description`, and, when the current grant needs more access, an `authorization_remediation` with the `scope` and/or `authorization_details` required. Absence of `authorization_remediation` means no additional access is currently known to be required.
+
+Then fetch only the insight IDs the task needs. Repeat `--insight` for multiple IDs; omit it only when the user asks for an overview of all insights:
+
+```bash
+link-cli insights list --insight top_brand_by_transaction_count_per_category_t180d --format json
+```
+
+Both commands accept `--limit` (1-100, default 10) and `--starting-after <last insight id>`. They do not accept `--ending-before`.
+
+Handle each result by `status` and `error_code`:
+
+| Result | Meaning | What to do |
+|---|---|---|
+| `ready` | Computed; `data` holds `{ label, value }` entries and `as_of` is the Unix time it was computed | Use it, and mention `as_of` when freshness matters |
+| `pending` | Not computed yet | Treat as unavailable for this answer. At most, retry once later if the user is waiting on it. Never poll in a loop |
+| `no_data` with `error_code: missing_permissions` | The grant lacks access | Follow the remediation steps below |
+| `no_data` with `error_code: internal_error` | Link could not compute it | Say the insight is temporarily unavailable |
+| `no_data` with no `error_code` | No qualifying activity in the authorized data | Say no qualifying activity was found for the access granted |
+
+Never report missing permissions, pending, or failed results as zero activity.
+
+For `missing_permissions`:
+
+1. Explain which access is missing, using `error_message` and `authorization_remediation`.
+2. Request only the access in `authorization_remediation`. Map `authorization_details` entries with `type: "source"` to `--source-actions` (for example, `--source-actions read_link_transactions`) and `scope` entries to `--scope`. Use `auth upgrade` when the session is authenticated so existing access is preserved; use `auth login` only when unauthenticated.
+3. Wait for the approval to complete, then run the same `insights list` command once more. If the user declines or access is still missing, continue without the insight and say so.
+
+Pass remediation values as separate, quoted arguments. Never build a shell command by pasting unquoted server strings.
+
+Values are tagged by `type`. `number_of_items` values carry `number_of_items.label`, naming what was counted (such as the brand), and `number_of_items.count`; the entry `label` names the category, for example "Top brand from Clothing and accessories shopping category" with `J.crew` and a count of 10. The `number_of_items.label` may be absent. For an unfamiliar `type`, describe only what its fields make clear, or omit it.
+
+Insights describe observed history. Explicit user instructions and stated preferences always override them. Describe a pattern as observed (for example, "your recent transactions point to J.crew for clothing"), not as a preference the user declared. Results cover only authorized sources; mention that coverage may be incomplete.
+
 ## Pagination
 
-All three list commands support the same pagination flags:
+`transactions list`, `balances list`, and `sources list` support the same pagination flags:
 
 | Flag | Description |
 |---|---|
@@ -276,6 +321,7 @@ When answering:
 - Mention the relevant time range and data source.
 - Note any limitations, such as partial pagination, missing categories, pending transactions, or unsupported currencies.
 - Avoid dumping raw records and object IDs unless the user asks for them.
+- Mention `as_of` when stale balances or insights could change the answer.
 - Prefer concise summaries, totals, and notable patterns.
 
 Example response style:

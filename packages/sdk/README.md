@@ -173,8 +173,8 @@ Decode the merchant's `WWW-Authenticate` header, then use the regular
 `spendRequests` resource to create and approve a shared-payment-token request:
 
 ```ts
-const approvedChallenge = response.headers.get('www-authenticate')!;
-const challenge = link.mpp.decodeChallenge(approvedChallenge);
+const challengeHeader = response.headers.get('www-authenticate')!;
+const challenge = link.mpp.decodeChallenge(challengeHeader);
 const paymentMethods = await link.paymentMethods.list();
 
 const spendRequest = await link.spendRequests.create({
@@ -202,7 +202,7 @@ const paid = await link.mpp.pay({
   body: JSON.stringify({ sku: 'sku_123' }),
   headers: { 'Content-Type': 'application/json' },
   spendRequestId: spendRequest.id,
-  approvedChallenge,
+  challenge: challengeHeader,
 });
 ```
 

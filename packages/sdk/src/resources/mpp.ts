@@ -335,8 +335,8 @@ export class MppResource implements IMppResource {
       ...(options.body !== undefined && { body: options.body }),
       ...(options.headers !== undefined && { headers: options.headers }),
       sharedPaymentToken,
-      ...(options.approvedChallenge !== undefined && {
-        approvedChallenge: options.approvedChallenge,
+      ...(options.challenge !== undefined && {
+        approvedChallenge: options.challenge,
       }),
     });
   }

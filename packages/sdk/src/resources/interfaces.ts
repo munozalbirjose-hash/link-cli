@@ -120,7 +120,7 @@ export interface MppRequestOptions {
 
 export interface MppPayOptions extends MppRequestOptions {
   spendRequestId: string;
-  approvedChallenge?: string;
+  challenge?: string;
 }
 
 export interface MppPaymentResult {

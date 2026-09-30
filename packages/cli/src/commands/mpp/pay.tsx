@@ -77,7 +77,7 @@ export async function runMppPayWithSpendRequest(
       ...(method !== undefined && { method }),
       ...(data !== undefined && { body: data }),
       headers: buildHeaders(data, headers),
-      ...(approvedChallenge !== undefined && { approvedChallenge }),
+      ...(approvedChallenge !== undefined && { challenge: approvedChallenge }),
     }),
   );
 }
@@ -136,7 +136,7 @@ export async function runMppPayFullFlow(
   const result = await options.mpp.pay({
     ...prepared.request,
     spendRequestId: prepared.spendRequest.id,
-    approvedChallenge: prepared.approvedChallenge,
+    challenge: prepared.approvedChallenge,
   });
   options.onStep?.('done');
   return sanitizeDeep(result);

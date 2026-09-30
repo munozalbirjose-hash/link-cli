@@ -323,6 +323,7 @@ describe('MppResource', () => {
     const promise = resource(fetch, spendRequests).pay({
       url: 'https://merchant.example/pay',
       spendRequestId: 'lsrq_123',
+      challenge: HEADER,
     });
     await vi.runAllTimersAsync();
     await expect(promise).resolves.toMatchObject({ body: 'paid' });

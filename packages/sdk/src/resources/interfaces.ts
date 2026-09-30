@@ -118,20 +118,41 @@ export interface MppPaymentResult {
   body: string;
 }
 
-export interface DecodedStripeChallenge {
+export interface DecodedMppChallengeBase {
   id: string;
   realm: string;
-  method: 'stripe';
-  intent: 'charge' | 'session';
   description?: string;
   digest?: string;
   expires?: string;
-  network_id: string;
-  request_json: Record<string, unknown>;
+  header?: string;
+  meta?: Record<string, string>;
+  opaque?: string;
 }
 
+export interface DecodedStripeChallengeRequest extends Record<string, unknown> {
+  amount: string;
+  currency: string;
+  networkId?: string;
+  methodDetails?: {
+    networkId: string;
+    paymentMethodTypes?: string[];
+    metadata?: Record<string, string>;
+    [key: string]: unknown;
+  };
+}
+
+export interface DecodedStripeChallenge extends DecodedMppChallengeBase {
+  method: 'stripe';
+  intent: 'charge' | 'session';
+  network_id: string;
+  request_json: DecodedStripeChallengeRequest;
+}
+
+/** Supported decoded MPP challenges. Add new method variants to this union. */
+export type DecodedMppChallenge = DecodedStripeChallenge;
+
 export interface IMppResource {
-  decodeChallenge(challengeHeader: string): DecodedStripeChallenge;
+  decodeChallenge(challengeHeader: string): DecodedMppChallenge[];
   pay(options: MppPayOptions): Promise<MppPaymentResult>;
 }
 

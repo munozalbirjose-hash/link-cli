@@ -5,7 +5,7 @@ import type {
   ISpendRequestResource,
   MppPaymentResult,
 } from '@/resources/interfaces';
-import { decodeStripeChallenge, MppResource } from '@/resources/mpp';
+import { decodeMppChallenges, MppResource } from '@/resources/mpp';
 
 const REQUEST = {
   amount: '1000',
@@ -65,11 +65,14 @@ afterEach(() => {
 
 describe('MppResource', () => {
   it('decodes stripe charge and session challenges for SDK consumers', () => {
-    expect(decodeStripeChallenge(HEADER)).toMatchObject({
-      id: 'ch_001',
-      network_id: 'net_001',
-      request_json: { amount: '1000', currency: 'usd' },
-    });
+    expect(decodeMppChallenges(HEADER)).toMatchObject([
+      {
+        id: 'ch_001',
+        method: 'stripe',
+        network_id: 'net_001',
+        request_json: { amount: '1000', currency: 'usd' },
+      },
+    ]);
   });
 
   it('decodes methodDetails.networkId and rejects malformed challenges', () => {
@@ -82,15 +85,39 @@ describe('MppResource', () => {
         methodDetails: { networkId: 'net_nested' },
       },
     });
-    expect(decodeStripeChallenge(header)).toMatchObject({
-      intent: 'session',
-      network_id: 'net_nested',
-    });
+    expect(decodeMppChallenges(header)).toMatchObject([
+      {
+        intent: 'session',
+        network_id: 'net_nested',
+      },
+    ]);
     expect(() =>
-      decodeStripeChallenge(
+      decodeMppChallenges(
         'Payment id="x", realm="r", method="tempo", intent="charge", request="e30="',
       ),
     ).toThrow(/stripe charge or session/);
+  });
+
+  it('returns every supported challenge and ignores unsupported methods', () => {
+    const secondStripe = Challenge.serialize({
+      ...CHALLENGE,
+      id: 'ch_002',
+      intent: 'session',
+    });
+    const tempo = Challenge.serialize({
+      id: 'tempo_001',
+      realm: 'merchant.example',
+      method: 'tempo',
+      intent: 'charge',
+      request: { amount: '1000000', currency: '0x01' },
+    });
+
+    expect(
+      decodeMppChallenges([tempo, HEADER, secondStripe].join(', ')),
+    ).toMatchObject([
+      { id: 'ch_001', method: 'stripe', intent: 'charge' },
+      { id: 'ch_002', method: 'stripe', intent: 'session' },
+    ]);
   });
 
   it('rejects non-loopback HTTP before making a request', async () => {

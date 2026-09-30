@@ -158,7 +158,7 @@ export function createMppCli(
 
   cli.command('decode', {
     description:
-      'Decode a stripe WWW-Authenticate challenge and extract network_id',
+      'Decode supported MPP challenges from a WWW-Authenticate header',
     options: decodeOptions,
     outputPolicy: 'agent-only' as const,
     async run(c) {

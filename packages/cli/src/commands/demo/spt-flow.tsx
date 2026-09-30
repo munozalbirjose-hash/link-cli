@@ -164,7 +164,10 @@ export const SptFlow: React.FC<SptFlowProps> = ({
         }
 
         const wwwAuth = probeResponse.headers.get('www-authenticate') ?? '';
-        const decoded = mpp.decodeChallenge(wwwAuth);
+        const decoded = mpp
+          .decodeChallenge(wwwAuth)
+          .find((challenge) => challenge.method === 'stripe');
+        if (!decoded) throw new Error('No supported Stripe challenge found');
         setNetworkId(decoded.network_id);
 
         setStep('explain-402');

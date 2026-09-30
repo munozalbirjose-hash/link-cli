@@ -166,15 +166,22 @@ credentials out of model context, logs, and user-visible messages.
 
 The [Machine Payments Protocol](https://mpp.dev) uses HTTP 402 challenges to
 describe a payment required by an API. `link.mpp` exposes two operations:
-`decodeChallenge` for inspecting a Stripe challenge and `pay` for paying it
-with an approved Link spend request.
+`decodeChallenge` for inspecting the supported challenges in a header and
+`pay` for paying a Stripe challenge with an approved Link spend request.
+
+`decodeChallenge` returns an array because one header can advertise several
+payment methods. The current SDK recognizes Stripe charge and session
+challenges; future methods will be added as new members of the
+`DecodedMppChallenge` union.
 
 Decode the merchant's `WWW-Authenticate` header, then use the regular
 `spendRequests` resource to create and approve a shared-payment-token request:
 
 ```ts
 const challengeHeader = response.headers.get('www-authenticate')!;
-const challenge = link.mpp.decodeChallenge(challengeHeader);
+const challenges = link.mpp.decodeChallenge(challengeHeader);
+const challenge = challenges.find((candidate) => candidate.method === 'stripe');
+if (!challenge) throw new Error('No supported Stripe challenge found');
 const paymentMethods = await link.paymentMethods.list();
 
 const spendRequest = await link.spendRequests.create({

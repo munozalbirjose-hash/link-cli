@@ -7,7 +7,9 @@ import {
   resolveLinkSdkConfig,
 } from '@/config';
 import type {
+  DecodedMppChallenge,
   DecodedStripeChallenge,
+  DecodedStripeChallengeRequest,
   IMppResource,
   IPaymentMethodsResource,
   ISpendRequestResource,
@@ -143,20 +145,58 @@ function getString(
   return value;
 }
 
-function resolveStripeChallenge(challenges: Challenge.Challenge[]): {
+function getRequiredString(value: unknown, path: string): string {
+  const result = getString(value, path);
+  if (result === undefined) {
+    throw new Error(`Invalid stripe challenge request: ${path}: missing`);
+  }
+  return result;
+}
+
+function getOptionalStringArray(
+  value: unknown,
+  path: string,
+): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new Error(
+      `Invalid stripe challenge request: ${path}: expected string array`,
+    );
+  }
+  return value;
+}
+
+function getOptionalStringRecord(
+  value: unknown,
+  path: string,
+): Record<string, string> | undefined {
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== 'object' ||
+    value == null ||
+    Array.isArray(value) ||
+    Object.values(value).some((item) => typeof item !== 'string')
+  ) {
+    throw new Error(
+      `Invalid stripe challenge request: ${path}: expected string record`,
+    );
+  }
+  return value as Record<string, string>;
+}
+
+function isSupportedStripeChallenge(
+  challenge: Challenge.Challenge,
+): challenge is StripeChallenge {
+  return (
+    challenge.method === 'stripe' &&
+    (challenge.intent === 'charge' || challenge.intent === 'session')
+  );
+}
+
+function parseStripeChallenge(challenge: StripeChallenge): {
   challenge: StripeChallenge;
   decoded: DecodedStripeChallenge;
 } {
-  const challenge = challenges.find(
-    (candidate) =>
-      candidate.method === 'stripe' &&
-      (candidate.intent === 'charge' || candidate.intent === 'session'),
-  );
-  if (!challenge) {
-    throw new Error(
-      'WWW-Authenticate header does not include a stripe charge or session challenge',
-    );
-  }
   if (
     typeof challenge.request !== 'object' ||
     challenge.request == null ||
@@ -168,8 +208,8 @@ function resolveStripeChallenge(challenges: Challenge.Challenge[]): {
   }
 
   const request = challenge.request as Record<string, unknown>;
-  getString(request.amount, 'amount');
-  getString(request.currency, 'currency');
+  const amount = getRequiredString(request.amount, 'amount');
+  const currency = getRequiredString(request.currency, 'currency');
   const methodDetails = request.methodDetails;
   if (
     methodDetails != null &&
@@ -188,35 +228,78 @@ function resolveStripeChallenge(challenges: Challenge.Challenge[]): {
       'Invalid stripe challenge request: methodDetails.networkId: missing',
     );
   }
+  const paymentMethodTypes = getOptionalStringArray(
+    details?.paymentMethodTypes,
+    'methodDetails.paymentMethodTypes',
+  );
+  const metadata = getOptionalStringRecord(
+    details?.metadata,
+    'methodDetails.metadata',
+  );
 
-  const stripeChallenge = challenge as StripeChallenge;
+  const requestJson: DecodedStripeChallengeRequest = {
+    ...request,
+    amount,
+    currency,
+    ...(details && {
+      methodDetails: {
+        ...details,
+        networkId,
+        ...(paymentMethodTypes && { paymentMethodTypes }),
+        ...(metadata && { metadata }),
+      },
+    }),
+  };
   return {
-    challenge: stripeChallenge,
+    challenge,
     decoded: {
-      id: stripeChallenge.id,
-      realm: stripeChallenge.realm,
+      id: challenge.id,
+      realm: challenge.realm,
       method: 'stripe',
-      intent: stripeChallenge.intent,
-      ...(stripeChallenge.description !== undefined && {
-        description: stripeChallenge.description,
+      intent: challenge.intent,
+      ...(challenge.description !== undefined && {
+        description: challenge.description,
       }),
-      ...(stripeChallenge.digest !== undefined && {
-        digest: stripeChallenge.digest,
+      ...(challenge.digest !== undefined && {
+        digest: challenge.digest,
       }),
-      ...(stripeChallenge.expires !== undefined && {
-        expires: stripeChallenge.expires,
+      ...(challenge.expires !== undefined && {
+        expires: challenge.expires,
       }),
+      ...(challenge.header !== undefined && { header: challenge.header }),
+      ...(challenge.meta !== undefined && { meta: challenge.meta }),
+      ...(challenge.opaque !== undefined && { opaque: challenge.opaque }),
       network_id: networkId,
-      request_json: request,
+      request_json: requestJson,
     },
   };
 }
 
-export function decodeStripeChallenge(
+function resolveStripeChallenge(challenges: Challenge.Challenge[]): {
+  challenge: StripeChallenge;
+  decoded: DecodedStripeChallenge;
+} {
+  const challenge = challenges.find(isSupportedStripeChallenge);
+  if (!challenge) {
+    throw new Error(
+      'WWW-Authenticate header does not include a supported stripe charge or session challenge',
+    );
+  }
+  return parseStripeChallenge(challenge);
+}
+
+export function decodeMppChallenges(
   challengeHeader: string,
-): DecodedStripeChallenge {
-  return resolveStripeChallenge(Challenge.deserializeList(challengeHeader))
-    .decoded;
+): DecodedMppChallenge[] {
+  const challenges = Challenge.deserializeList(challengeHeader).filter(
+    isSupportedStripeChallenge,
+  );
+  if (challenges.length === 0) {
+    throw new Error(
+      'WWW-Authenticate header does not include a supported stripe charge or session challenge',
+    );
+  }
+  return challenges.map((challenge) => parseStripeChallenge(challenge).decoded);
 }
 
 function challengeFromResponse(response: Response): StripeChallenge {
@@ -252,8 +335,8 @@ export class MppResource implements IMppResource {
       dependencies.paymentMethods ?? new PaymentMethodsResource(options);
   }
 
-  decodeChallenge(challengeHeader: string): DecodedStripeChallenge {
-    return decodeStripeChallenge(challengeHeader);
+  decodeChallenge(challengeHeader: string): DecodedMppChallenge[] {
+    return decodeMppChallenges(challengeHeader);
   }
 
   async probe(options: MppRequestOptions): Promise<MppProbeResult> {

@@ -8,19 +8,21 @@ const CLEAN_TEXT = 'EvilHidden';
 
 describe('DecodeChallengeView', () => {
   it('renders no raw ANSI escapes for an attacker-controlled challenge', () => {
-    const decoded = sanitizeDeep({
-      id: ESCAPE_PAYLOAD,
-      realm: ESCAPE_PAYLOAD,
-      method: 'stripe' as const,
-      intent: 'charge' as const,
-      description: ESCAPE_PAYLOAD,
-      network_id: 'net_001',
-      request_json: {
-        amount: '1000',
-        currency: 'usd',
-        merchantName: ESCAPE_PAYLOAD,
+    const decoded = sanitizeDeep([
+      {
+        id: ESCAPE_PAYLOAD,
+        realm: ESCAPE_PAYLOAD,
+        method: 'stripe' as const,
+        intent: 'charge' as const,
+        description: ESCAPE_PAYLOAD,
+        network_id: 'net_001',
+        request_json: {
+          amount: '1000',
+          currency: 'usd',
+          merchantName: ESCAPE_PAYLOAD,
+        },
       },
-    });
+    ]);
     const { lastFrame } = render(<DecodeChallengeView decoded={decoded} />);
 
     const frame = lastFrame() ?? '';

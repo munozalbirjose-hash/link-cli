@@ -678,6 +678,19 @@ link-cli demo --only-card  # virtual card flow only
 link-cli demo --only-spt   # machine payment (SPT) flow only
 ```
 
+## Command analytics
+
+Link CLI sends a best-effort `CLI Command` event to `https://r.stripe.com/0`
+when a command starts, including commands invoked through MCP. Events contain
+the command name, CLI version, and a recognized AI agent name when available.
+They do not contain command arguments, credentials, API requests, or results.
+Failed commands count as dispatches; the event does not report success or
+failure. Help, version, and MCP discovery requests are not counted.
+
+Set `DO_NOT_TRACK=1` or `LINK_CLI_TELEMETRY_OPTOUT=1` to disable these events.
+`LINK_CLI_TELEMETRY_URL` overrides the destination for local development.
+Sending failures do not affect command output or exit status.
+
 ## Development
 
 Workspace development requires Node.js 24+.

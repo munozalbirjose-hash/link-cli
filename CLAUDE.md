@@ -247,4 +247,6 @@ Rules:
 | `LINK_API_BASE_URL` | Override API base URL |
 | `LINK_AUTH_BASE_URL` | Override auth base URL |
 | `LINK_HTTP_PROXY` | Route all SDK requests through an HTTP proxy (requires `undici` installed) |
+| `DO_NOT_TRACK` / `LINK_CLI_TELEMETRY_OPTOUT` | Disable command analytics when either equals `1` or `true` (case-insensitive) |
+| `LINK_CLI_TELEMETRY_URL` | Override AEL destination for development; invalid values disable telemetry |
 | `LINK_IDENTITY_COMMANDS` | When `1` or `true`, register the unlisted `identity` command group. Omitted from `--help`, `--llms`, and MCP otherwise. |

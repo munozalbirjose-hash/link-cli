@@ -17,6 +17,10 @@ const agentSignals = [
   ['CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_cli'],
 ] as const;
 
+export function isKnownAIAgent(agent: string): boolean {
+  return agentSignals.some(([, slug]) => slug === agent);
+}
+
 export function detectAIAgent(
   env: Readonly<Record<string, string | undefined>>,
 ): string {

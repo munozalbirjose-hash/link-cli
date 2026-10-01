@@ -1,8 +1,10 @@
 import type {
   ApprovalDetail,
   ApprovalPolicy,
+  AvailableInsightTypesPage,
   BalancesPage,
   CredentialType,
+  InsightsPage,
   LineItem,
   PaymentMethod,
   RequestApprovalResponse,
@@ -142,6 +144,22 @@ export interface ListTransactionsParams {
 
 export interface ITransactionsResource {
   list(params?: ListTransactionsParams): Promise<TransactionsPage>;
+}
+
+export interface ListInsightTypesParams {
+  limit?: number;
+  starting_after?: string;
+}
+
+export interface ListInsightsParams extends ListInsightTypesParams {
+  insights?: string[];
+}
+
+export interface IInsightsResource {
+  listAvailableTypes(
+    params?: ListInsightTypesParams,
+  ): Promise<AvailableInsightTypesPage>;
+  list(params?: ListInsightsParams): Promise<InsightsPage>;
 }
 
 export interface ListSourcesParams {

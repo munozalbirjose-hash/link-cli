@@ -150,6 +150,12 @@ remains separate.
 See the [terminal OAuth example](example/README.md) for an agent scaffolded with
 Eve's CLI that connects our Better Auth Link integration to the mounted extension.
 
+## Sample agents
+
+- [Personal CFO](examples/personal-cfo/README.md): a read-only agent that
+  reviews cash, spending, and connected accounts. It shows how to request
+  financial-data access and remove spending tools.
+
 ## Development
 
 From the repository root:

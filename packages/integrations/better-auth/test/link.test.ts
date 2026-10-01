@@ -5,7 +5,7 @@ import { createAuthClient } from 'better-auth/client';
 import { getMigrations } from 'better-auth/db/migration';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { linkClient } from '../src/client';
-import { link } from '../src/index';
+import { type LinkOptions, link } from '../src/index';
 
 const credentials = {
   clientId: 'link-client',
@@ -37,7 +37,7 @@ class Cookies {
 async function fixture(
   strategy: 'database' | 'cookie' = 'database',
   basePath = '/api/auth',
-  linkOptions: { redirectURI?: string; scopes?: string[] } = {},
+  linkOptions: Omit<LinkOptions, keyof typeof credentials> = {},
   authOptions: {
     encryptOAuthTokens?: boolean;
     allowUnlinkingAll?: boolean;
@@ -278,6 +278,32 @@ describe.each(['database', 'cookie'] as const)('%s OAuth state', (strategy) => {
         .prepare("select name from sqlite_master where name = 'linkConnection'")
         .get(),
     ).toBeUndefined();
+  });
+
+  it('requests authorization details as one JSON parameter', async () => {
+    const authorizationDetails = [
+      { type: 'source', actions: ['read_link_transactions', 'read_balances'] },
+    ];
+    const f = await fixture(strategy, '/api/auth', {
+      scopes: ['userinfo:read'],
+      authorizationDetails,
+    });
+    const url = await f.start();
+    expect(url.searchParams.getAll('authorization_details')).toEqual([
+      JSON.stringify(authorizationDetails),
+    ]);
+    expect(url.searchParams.get('key')).toBe(credentials.publishableKey);
+    expect(url.searchParams.get('scope')).toBe('userinfo:read');
+    expect((await f.complete(url)).headers.get('location')).toBe('/done');
+  });
+
+  it('omits authorization details when none are configured', async () => {
+    for (const linkOptions of [{}, { authorizationDetails: [] }]) {
+      const f = await fixture(strategy, '/api/auth', linkOptions);
+      const url = await f.start();
+      expect(url.searchParams.has('authorization_details')).toBe(false);
+      expect(url.searchParams.get('key')).toBe(credentials.publishableKey);
+    }
   });
 
   it('uses a custom redirect URI for authorization and token exchange', async () => {

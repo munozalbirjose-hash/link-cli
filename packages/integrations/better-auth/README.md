@@ -48,6 +48,30 @@ export const authClient = createAuthClient({ plugins: [linkClient()] });
 
 Default scopes are `payment_methods.agentic` and `userinfo:read`. For sign-in only, set `scopes: ['userinfo:read']` in `link(...)`. Keep `userinfo:read` when customizing scopes.
 
+To read financial data, add `authorizationDetails`. It is sent as one JSON `authorization_details` parameter:
+
+```ts
+link({
+  clientId: process.env.LINK_CLIENT_ID!,
+  clientSecret: process.env.LINK_CLIENT_SECRET!,
+  publishableKey: process.env.STRIPE_PUBLISHABLE_KEY!,
+  scopes: ['userinfo:read'],
+  authorizationDetails: [
+    {
+      type: 'source',
+      actions: [
+        'read_link_transactions',
+        'read_external_transactions',
+        'read_balances',
+        'read_source_details',
+      ],
+    },
+  ],
+});
+```
+
+External transactions, balances, and source details require your Stripe account to be registered for Financial Connections. Request only the actions your app uses.
+
 ## Connect a wallet
 
 After the user signs in to your app:

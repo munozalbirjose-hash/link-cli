@@ -22,6 +22,8 @@ export interface LinkOptions {
   clientSecret: string;
   publishableKey: string;
   scopes?: string[];
+  /** Rich authorization requests, such as `{ type: 'source', actions }`. */
+  authorizationDetails?: ReadonlyArray<Record<string, unknown>>;
   redirectURI?: string;
 }
 
@@ -41,7 +43,12 @@ export function link(options: LinkOptions) {
         authorizationUrl: 'https://login.link.com/auth',
         tokenUrl: 'https://login.link.com/auth/token',
         userInfoUrl: 'https://api.link.com/userinfo',
-        authorizationUrlParams: { key: options.publishableKey },
+        authorizationUrlParams: {
+          ...(options.authorizationDetails?.length && {
+            authorization_details: JSON.stringify(options.authorizationDetails),
+          }),
+          key: options.publishableKey,
+        },
         scopes: options.scopes ?? ['payment_methods.agentic', 'userinfo:read'],
         pkce: true,
         accessTokenExpiresIn: 3600,

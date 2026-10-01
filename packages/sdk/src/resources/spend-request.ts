@@ -7,7 +7,11 @@ import type {
   ISpendRequestResource,
   UpdateSpendRequestParams,
 } from '@/resources/interfaces';
-import type { RequestApprovalResponse, SpendRequest } from '@/types/index';
+import type {
+  RecurringInterval,
+  RequestApprovalResponse,
+  SpendRequest,
+} from '@/types/index';
 
 const sharedPaymentTokenSchema = z.union([
   z.string().transform((id) => ({ id })),
@@ -23,6 +27,14 @@ const spendRequestSchema = z.looseObject({
   created_at: z.string(),
   updated_at: z.string(),
   shared_payment_token: sharedPaymentTokenSchema.nullable().optional(),
+  // interval_count defaults to 1 server-side and may be omitted.
+  recurring: z
+    .looseObject({
+      interval: z.string(),
+      interval_count: z.number().default(1),
+    })
+    .nullable()
+    .optional(),
 });
 
 const spendRequestsResponseSchema = z.looseObject({
@@ -48,6 +60,7 @@ const duplicateSpendRequestErrorSchema = z.looseObject({
 type InternalCreateSpendRequestParams = CreateSpendRequestParams & {
   approve?: boolean;
   expires_at?: number;
+  recurring?: { interval: RecurringInterval; interval_count?: number };
 };
 
 type InternalUpdateSpendRequestParams = UpdateSpendRequestParams & {

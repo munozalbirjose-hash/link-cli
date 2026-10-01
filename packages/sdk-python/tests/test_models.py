@@ -95,6 +95,7 @@ def test_spend_request_full_response() -> None:
         "activity_url": "https://link.com/activity",
         "metadata": {},
         "expires_at": 789,
+        "recurring": {"interval": "month", "interval_count": 2},
         "created_at": "now",
         "updated_at": "later",
     }
@@ -137,6 +138,10 @@ def test_optional_fields_remain_optional() -> None:
     method = PaymentMethod(id="pm_1", type="card", is_default=False, name="Visa")
     assert method.nickname is None
     assert SpendRequest.model_validate(SPEND).amount is None
+    recurring = SpendRequest.model_validate(
+        {**SPEND, "recurring": {"interval": "month"}}
+    ).recurring
+    assert recurring is not None and recurring.interval_count == 1
     assert TransactionsPage(data=[]).data == []
     assert UserInfo.model_validate({}).agent_wallet_spend_limits is None
 

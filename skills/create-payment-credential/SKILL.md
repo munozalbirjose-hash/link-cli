@@ -286,16 +286,8 @@ following steps in the frame that contains it.
      --total "type:total,display_text:Total,amount:<cents>"
    ```
 
-   During migration, the legacy form (`--execution-method link_pay_token` with
-   the default `card` credential type) remains accepted. Do not set
-   `--network-id` or `--test` for either LPT request form. Present the approval
-   URL and wait for approval before retrieving a token.
-
-   If the API specifically rejects `link_pay_token` as an unsupported
-   `credential_type`, retry once with the legacy form: remove
-   `--credential-type link_pay_token` and add `--execution-method link_pay_token`,
-   keeping the same `--merchant-account-id`. Sending both flags is rejected. Do
-   not retry other creation errors.
+   Do not set `--network-id` or `--test` for an LPT request. Present the
+   approval URL and wait for approval before retrieving a token.
 
 5. **Retrieve the token immediately before injecting it.** Each returned LPT
    is valid for up to 30 minutes, or until the SpendRequest expires:

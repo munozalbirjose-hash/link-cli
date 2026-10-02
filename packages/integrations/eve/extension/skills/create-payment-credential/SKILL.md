@@ -58,7 +58,9 @@ consumer. During migration, the legacy form remains accepted:
 `credential_type: "card"`, `execution_method: "link_pay_token"`, and
 `merchant_account_id`.
 If the API specifically rejects `link_pay_token` as an unsupported
-`credential_type`, retry once with that legacy form; do not retry other
+`credential_type`, retry once with that legacy form: set `credential_type` to
+`"card"` (or omit it) and add `execution_method: "link_pay_token"`, keeping the
+same `merchant_account_id`. Sending both is rejected. Do not retry other
 creation errors.
 
 Never invent a `network_id` or `merchant_account_id`. For LPT, omit merchant

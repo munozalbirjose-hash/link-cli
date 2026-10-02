@@ -150,7 +150,7 @@ export const retrieveOptions = z.object({
     .array(z.string())
     .default([])
     .describe(
-      'Include extra data (repeatable; use --include link_pay_token for an approved Link Pay Token request)',
+      'Include extra data (repeatable, e.g. --include card, or --include link_pay_token for an approved Link Pay Token request)',
     ),
   outputFile: z
     .string()

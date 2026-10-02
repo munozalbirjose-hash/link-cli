@@ -6,10 +6,11 @@ type GetAccessTokenOptions struct {
 }
 
 // ExecutionMethod identifies how an approved credential will be executed.
-//
-// Deprecated: Use CredentialTypeLinkPayToken. Retained for migration compatibility.
 type ExecutionMethod string
 
+// ExecutionMethodLinkPayToken requests the legacy Link Pay Token form.
+//
+// Deprecated: Use CredentialTypeLinkPayToken. Retained for migration compatibility.
 const ExecutionMethodLinkPayToken ExecutionMethod = "link_pay_token"
 
 // CreateSpendRequestParams contains fields accepted when creating a spend request.

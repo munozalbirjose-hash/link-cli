@@ -293,8 +293,10 @@ following steps in the frame that contains it.
    URL and wait for approval before retrieving a token.
 
    If the API specifically rejects `link_pay_token` as an unsupported
-   `credential_type`, retry once with the legacy form. Do not retry other
-   creation errors.
+   `credential_type`, retry once with the legacy form: remove
+   `--credential-type link_pay_token` and add `--execution-method link_pay_token`,
+   keeping the same `--merchant-account-id`. Sending both flags is rejected. Do
+   not retry other creation errors.
 
 5. **Retrieve the token immediately before injecting it.** Each returned LPT
    is valid for up to 30 minutes, or until the SpendRequest expires:

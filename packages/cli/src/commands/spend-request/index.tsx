@@ -77,6 +77,7 @@ export function createSpendRequestCli(
   repository: ISpendRequestResource,
   authStorage?: CliAuthStorage,
   envAccessToken?: string,
+  { usedRemovedExecutionMethod = false } = {},
 ) {
   const cli = Cli.create('spend-request', {
     description: 'Spend request management commands',
@@ -112,6 +113,13 @@ export function createSpendRequestCli(
     alias: { merchantName: 'm' },
     outputPolicy: 'agent-only' as const,
     async *run(c) {
+      if (usedRemovedExecutionMethod) {
+        return c.error({
+          code: 'INVALID_INPUT',
+          message:
+            '--execution-method has been removed. Use --credential-type link_pay_token with --merchant-account-id.',
+        });
+      }
       requireAuthGuard(c, authStorage, envAccessToken);
 
       const opts = c.options;

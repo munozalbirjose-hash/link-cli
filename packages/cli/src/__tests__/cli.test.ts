@@ -702,7 +702,14 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
           '--merchant-account-id',
           'acct_lpt_target',
         ],
-        message: 'Unknown flag: --execution-method',
+        message:
+          '--execution-method has been removed. Use --credential-type link_pay_token',
+      },
+      {
+        name: 'the removed execution-method flag in --flag=value form',
+        args: ['--execution-method=link_pay_token', ...LPT_ARGS],
+        message:
+          '--execution-method has been removed. Use --credential-type link_pay_token',
       },
       {
         name: 'agent-provided merchant identity',

@@ -19,6 +19,14 @@ const lineItem = z.strictObject({
   product_url: z.string().optional(),
   totals: z.array(total).optional(),
 });
+// execution_method was replaced by credential_type: link_pay_token.
+const removedExecutionMethodError = {
+  error: (issue: z.core.$ZodRawIssue) =>
+    issue.code === 'unrecognized_keys' &&
+    issue.keys.includes('execution_method')
+      ? 'execution_method has been removed. Use credential_type: link_pay_token with merchant_account_id.'
+      : undefined,
+};
 const pagination = {
   limit: z.number().int().min(1).max(100).optional(),
   starting_after: id.optional(),
@@ -58,57 +66,64 @@ export const linkToolSchemas = {
       ),
   }),
   createSpendRequest: z
-    .strictObject({
-      idempotency_key: id
-        .refine(
-          (key) => new TextEncoder().encode(key).length <= 255,
-          'At most 255 UTF-8 bytes',
-        )
-        .optional()
-        .describe('Reuse only when retrying the same logical creation.'),
-      payment_details: id
-        .optional()
-        .describe('Payment method ID; omit to use the default.'),
-      credential_type: z
-        .enum(['card', 'shared_payment_token', 'link_pay_token'])
-        .default('card')
-        .describe('Use link_pay_token for supported Stripe payment surfaces.'),
-      network_id: id.optional().describe('Required for shared payment tokens.'),
-      merchant_account_id: id
-        .optional()
-        .describe(
-          'For link_pay_token, read data-stripe-merchant-account from the checkout DOM.',
-        ),
-      amount: money.positive().max(500000).describe('Amount in cents.'),
-      currency: z.string().length(3).default('usd'),
-      merchant_name: z.string().min(1).optional(),
-      merchant_url: z.url().optional(),
-      context: z
-        .string()
-        .min(100)
-        .describe(
-          'Describe the purchase and rationale. The user reads this when approving.',
-        ),
-      line_items: z.array(lineItem).optional(),
-      totals: z.array(total).optional(),
-      request_approval: z
-        .boolean()
-        .default(true)
-        .describe(
-          'Ask Link for user approval; return the approval URL without polling.',
-        ),
-      test: z
-        .boolean()
-        .default(false)
-        .describe('Create test credentials instead of live credentials.'),
-      metadata: z
-        .record(z.string().max(40), z.string().max(500))
-        .refine(
-          (value) => Object.keys(value).length <= 50,
-          'At most 50 metadata entries',
-        )
-        .optional(),
-    })
+    .strictObject(
+      {
+        idempotency_key: id
+          .refine(
+            (key) => new TextEncoder().encode(key).length <= 255,
+            'At most 255 UTF-8 bytes',
+          )
+          .optional()
+          .describe('Reuse only when retrying the same logical creation.'),
+        payment_details: id
+          .optional()
+          .describe('Payment method ID; omit to use the default.'),
+        credential_type: z
+          .enum(['card', 'shared_payment_token', 'link_pay_token'])
+          .default('card')
+          .describe(
+            'Use link_pay_token for supported Stripe payment surfaces.',
+          ),
+        network_id: id
+          .optional()
+          .describe('Required for shared payment tokens.'),
+        merchant_account_id: id
+          .optional()
+          .describe(
+            'For link_pay_token, read data-stripe-merchant-account from the checkout DOM.',
+          ),
+        amount: money.positive().max(500000).describe('Amount in cents.'),
+        currency: z.string().length(3).default('usd'),
+        merchant_name: z.string().min(1).optional(),
+        merchant_url: z.url().optional(),
+        context: z
+          .string()
+          .min(100)
+          .describe(
+            'Describe the purchase and rationale. The user reads this when approving.',
+          ),
+        line_items: z.array(lineItem).optional(),
+        totals: z.array(total).optional(),
+        request_approval: z
+          .boolean()
+          .default(true)
+          .describe(
+            'Ask Link for user approval; return the approval URL without polling.',
+          ),
+        test: z
+          .boolean()
+          .default(false)
+          .describe('Create test credentials instead of live credentials.'),
+        metadata: z
+          .record(z.string().max(40), z.string().max(500))
+          .refine(
+            (value) => Object.keys(value).length <= 50,
+            'At most 50 metadata entries',
+          )
+          .optional(),
+      },
+      removedExecutionMethodError,
+    )
     .superRefine((value, ctx) => {
       if (value.credential_type === 'link_pay_token') {
         if (

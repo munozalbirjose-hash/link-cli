@@ -108,7 +108,12 @@ describe('Link tools', () => {
     expect(parse({ ...lpt, merchant_account_id: undefined })).toBe(false);
     expect(parse({ ...lpt, merchant_name: 'Shop' })).toBe(false);
     expect(parse({ ...lpt, test: true })).toBe(false);
-    expect(parse({ ...lpt, execution_method: 'link_pay_token' })).toBe(false);
+    expect(
+      linkToolSchemas.createSpendRequest.safeParse({
+        ...lpt,
+        execution_method: 'link_pay_token',
+      }).error?.issues[0]?.message,
+    ).toContain('execution_method has been removed');
     expect(parse({ ...purchase, merchant_account_id: 'acct_one' })).toBe(false);
     expect(
       parse({

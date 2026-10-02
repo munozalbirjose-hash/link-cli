@@ -69,9 +69,19 @@ export const linkToolSchemas = {
       payment_details: id
         .optional()
         .describe('Payment method ID; omit to use the default.'),
-      credential_type: z.enum(['card', 'shared_payment_token']).default('card'),
+      credential_type: z
+        .enum(['card', 'shared_payment_token', 'link_pay_token'])
+        .default('card')
+        .describe(
+          'Use link_pay_token for supported hosted checkout when the backend rollout flag is enabled.',
+        ),
       network_id: id.optional().describe('Required for shared payment tokens.'),
-      execution_method: z.literal('link_pay_token').optional(),
+      execution_method: z
+        .literal('link_pay_token')
+        .optional()
+        .describe(
+          'Legacy Link Pay Token request form; prefer credential_type.',
+        ),
       merchant_account_id: id
         .optional()
         .describe(
@@ -108,10 +118,17 @@ export const linkToolSchemas = {
         .optional(),
     })
     .superRefine((value, ctx) => {
-      if (value.execution_method === 'link_pay_token') {
+      const newLptCredential = value.credential_type === 'link_pay_token';
+      const legacyLptExecution = value.execution_method === 'link_pay_token';
+      const lptRequest = newLptCredential || legacyLptExecution;
+
+      if (lptRequest) {
+        const hasValidLptShape = newLptCredential
+          ? !legacyLptExecution
+          : value.credential_type === 'card';
         if (
           !value.merchant_account_id ||
-          value.credential_type !== 'card' ||
+          !hasValidLptShape ||
           value.test ||
           value.network_id ||
           value.merchant_name ||
@@ -120,14 +137,15 @@ export const linkToolSchemas = {
           ctx.addIssue({
             code: 'custom',
             message:
-              'link_pay_token requires merchant_account_id and card credentials; omit merchant_name, merchant_url, network_id, and test mode.',
+              'Link Pay Token requires merchant_account_id and a valid credential type; omit merchant_name, merchant_url, network_id, and test mode.',
           });
         }
       } else if (value.merchant_account_id) {
         ctx.addIssue({
           code: 'custom',
           path: ['merchant_account_id'],
-          message: 'Requires execution_method: link_pay_token.',
+          message:
+            'Requires credential_type: link_pay_token or the legacy execution_method: link_pay_token.',
         });
       } else if (value.credential_type === 'shared_payment_token') {
         if (!value.network_id)

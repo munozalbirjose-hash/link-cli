@@ -120,11 +120,25 @@ export function createSpendRequestCli(
       const networkId = opts.networkId;
       const executionMethod = opts.executionMethod;
       const merchantAccountId = opts.merchantAccountId?.trim();
+      const newLptCredentialRequested = credentialType === 'link_pay_token';
+      const legacyLptExecutionRequested = executionMethod !== undefined;
       const lptExecutionRequested =
-        executionMethod !== undefined || merchantAccountId !== undefined;
+        newLptCredentialRequested ||
+        legacyLptExecutionRequested ||
+        merchantAccountId !== undefined;
 
       if (lptExecutionRequested) {
-        if (executionMethod !== 'link_pay_token') {
+        if (newLptCredentialRequested && legacyLptExecutionRequested) {
+          return c.error({
+            code: 'INVALID_INPUT',
+            message:
+              'execution-method cannot be combined with credential-type link_pay_token',
+          });
+        }
+        if (
+          !newLptCredentialRequested &&
+          executionMethod !== 'link_pay_token'
+        ) {
           return c.error({
             code: 'INVALID_INPUT',
             message:
@@ -134,11 +148,12 @@ export function createSpendRequestCli(
         if (!merchantAccountId) {
           return c.error({
             code: 'INVALID_INPUT',
-            message:
-              'merchant-account-id is required when execution-method is link_pay_token',
+            message: newLptCredentialRequested
+              ? 'merchant-account-id is required when credential-type is link_pay_token'
+              : 'merchant-account-id is required when execution-method is link_pay_token',
           });
         }
-        if (credentialType !== 'card') {
+        if (!newLptCredentialRequested && credentialType !== 'card') {
           return c.error({
             code: 'INVALID_INPUT',
             message:
@@ -148,29 +163,27 @@ export function createSpendRequestCli(
         if (networkId) {
           return c.error({
             code: 'INVALID_INPUT',
-            message:
-              'network-id cannot be used when execution-method is link_pay_token',
+            message: 'network-id cannot be used with Link Pay Token',
           });
         }
         if (opts.test) {
           return c.error({
             code: 'INVALID_INPUT',
-            message:
-              'test cannot be used when execution-method is link_pay_token',
+            message: 'test cannot be used with Link Pay Token',
           });
         }
         if (opts.approve && requestApproval) {
           return c.error({
             code: 'INVALID_INPUT',
             message:
-              '--approve with --execution-method link_pay_token requires --no-request-approval',
+              '--approve with Link Pay Token requires --no-request-approval',
           });
         }
         if (opts.merchantName || opts.merchantUrl) {
           return c.error({
             code: 'INVALID_INPUT',
             message:
-              'merchant-name and merchant-url cannot be used when execution-method is link_pay_token; Link resolves the merchant identity from merchant-account-id',
+              'merchant-name and merchant-url cannot be used with Link Pay Token; Link resolves the merchant identity from merchant-account-id',
           });
         }
       }

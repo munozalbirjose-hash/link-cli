@@ -190,6 +190,29 @@ describe('SpendRequestResource', () => {
       expect(sentBody.merchant_account_id).toBe('acct_lpt_target');
     });
 
+    it('serializes the Link Pay Token credential type and returns it', async () => {
+      const responseWithCredentialType = {
+        ...spendRequestResponse,
+        credential_type: 'link_pay_token',
+      };
+      mockFetchResponse(200, responseWithCredentialType);
+
+      const result = await repo.create({
+        context: 'Checkout purchase approved by the user.',
+        credential_type: 'link_pay_token',
+        merchant_account_id: 'acct_lpt_target',
+        amount: 5000,
+        currency: 'usd',
+      });
+
+      const [, opts] = mockFetch.mock.calls[0]!;
+      const sentBody = JSON.parse(opts.body);
+      expect(sentBody.credential_type).toBe('link_pay_token');
+      expect(sentBody.execution_method).toBeUndefined();
+      expect(sentBody.merchant_account_id).toBe('acct_lpt_target');
+      expect(result.credential_type).toBe('link_pay_token');
+    });
+
     it('serializes metadata in POST body', async () => {
       const paramsWithMetadata: CreateSpendRequestParams = {
         ...validParams,

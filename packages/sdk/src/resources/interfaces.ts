@@ -67,6 +67,7 @@ export interface CreateSpendRequestParams {
   payment_details?: string;
   credential_type?: CredentialType;
   network_id?: string;
+  /** @deprecated Use credential_type: 'link_pay_token'. Retained for migration compatibility. */
   execution_method?: 'link_pay_token';
   merchant_account_id?: string;
   amount?: number;

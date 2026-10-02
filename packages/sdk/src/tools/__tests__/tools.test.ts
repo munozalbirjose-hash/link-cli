@@ -112,6 +112,23 @@ describe('Link tools', () => {
     ).toBe(true);
     expect(
       linkToolSchemas.createSpendRequest.safeParse({
+        amount: 1000,
+        context: purchase.context,
+        credential_type: 'link_pay_token',
+        merchant_account_id: 'acct_one',
+      }).success,
+    ).toBe(true);
+    expect(
+      linkToolSchemas.createSpendRequest.safeParse({
+        amount: 1000,
+        context: purchase.context,
+        credential_type: 'link_pay_token',
+        execution_method: 'link_pay_token',
+        merchant_account_id: 'acct_one',
+      }).success,
+    ).toBe(false);
+    expect(
+      linkToolSchemas.createSpendRequest.safeParse({
         ...purchase,
         approval_details: { approval_method: 'programmatic' },
       }).success,
@@ -122,6 +139,27 @@ describe('Link tools', () => {
         execution_method: 'link_pay_token',
       }).success,
     ).toBe(false);
+  });
+
+  it('sends the new Link Pay Token credential type through the SDK', async () => {
+    const { tools, fetch } = fixture();
+    await tools.create_spend_request.execute(
+      {
+        amount: 1000,
+        context: purchase.context,
+        credential_type: 'link_pay_token',
+        merchant_account_id: 'acct_one',
+      },
+      context,
+    );
+
+    const [, init] = fetch.mock.calls[0]!;
+    const body = JSON.parse(String(init?.body));
+    expect(body).toMatchObject({
+      credential_type: 'link_pay_token',
+      merchant_account_id: 'acct_one',
+    });
+    expect(body).not.toHaveProperty('execution_method');
   });
 
   it('maps retrieve includes and update IDs without putting IDs in the body', async () => {

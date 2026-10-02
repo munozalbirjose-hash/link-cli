@@ -472,7 +472,7 @@ link-cli spend-request update lsrq_001 \
 # Request approval separately (alternative to create --request-approval)
 link-cli spend-request request-approval lsrq_001
 
-# Retrieve at any time (includes card credentials after approval)
+# Retrieve a request; request a credential only when needed
 link-cli spend-request retrieve lsrq_001
 
 # Cancel a spend request (from created, pending_approval, or approved state)
@@ -489,7 +489,7 @@ non-zero with `POLLING_TIMEOUT`.
 
 ### Credential types
 
-By default, a spend request provisions a virtual card. Link can also provide a shared payment token (SPT) for use with the Machine Payment Protocol (MPP) and a Link Pay Token (LPT) for use on Stripe hosted checkout forms.
+By default, a spend request provisions a virtual card. Link can also provide a shared payment token (SPT) for use with the Machine Payment Protocol (MPP) or a Link Pay Token (LPT) for supported Stripe hosted checkout forms. LPT is a distinct credential type.
 
 ### Shared Payment Token
 
@@ -527,6 +527,19 @@ identity from the account ID for the approval screen.
 
 ```bash
 link-cli spend-request create \
+  --credential-type link_pay_token \
+  --merchant-account-id acct_... \
+  --payment-method-id csmrpd_xxx \
+  --context "Purchasing an item from the checkout the agent inspected. The user initiated this purchase through the shopping assistant." \
+  --amount 3500 \
+  --request-approval
+```
+
+The `link_pay_token` credential type requires the backend rollout flag for the
+consumer. During migration, the legacy request form remains available:
+
+```bash
+link-cli spend-request create \
   --payment-method-id csmrpd_xxx \
   --execution-method link_pay_token \
   --merchant-account-id acct_... \
@@ -535,12 +548,12 @@ link-cli spend-request create \
   --request-approval
 ```
 
-LPT requests use the default `card` credential type and do not support
-`--test`, `--network-id`, or `shared_payment_token`. After approval, retrieve
-`--include link_pay_token` immediately before using it on the same checkout
-surface. Each returned LPT is valid for up to 30 minutes, or until the
-SpendRequest expires. If either DOM marker is absent, create a regular virtual
-card SpendRequest instead; do not create an LPT request.
+LPT requests do not support `--test`, `--network-id`, merchant name, or merchant
+URL. After approval, retrieve `--include link_pay_token` immediately before
+using it on the same checkout surface. Each returned LPT is valid for up to 30
+minutes, or until the SpendRequest expires. If either DOM marker is absent,
+create a regular virtual card SpendRequest instead; do not create an LPT
+request.
 
 
 ### Limits

@@ -693,10 +693,10 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
 
     const invalidLptCreateCases = [
       {
-        name: 'merchant-account-id without execution-method',
+        name: 'merchant-account-id without a Link Pay Token shape',
         args: ['--merchant-account-id', 'acct_lpt_target'],
         message:
-          'execution-method link_pay_token is required when merchant-account-id is provided',
+          'merchant-account-id requires credential-type link_pay_token (or the legacy execution-method link_pay_token)',
       },
       {
         name: 'new credential type without merchant-account-id',

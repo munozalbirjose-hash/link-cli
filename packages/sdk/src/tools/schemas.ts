@@ -130,9 +130,8 @@ export const linkToolSchemas = {
             'execution_method cannot be combined with credential_type: link_pay_token; omit execution_method.',
         });
       } else if (lptRequest) {
-        const hasValidLptShape = newLptCredential
-          ? !legacyLptExecution
-          : value.credential_type === 'card';
+        const hasValidLptShape =
+          newLptCredential || value.credential_type === 'card';
         if (
           !value.merchant_account_id ||
           !hasValidLptShape ||

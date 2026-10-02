@@ -142,7 +142,7 @@ export function createSpendRequestCli(
           return c.error({
             code: 'INVALID_INPUT',
             message:
-              'execution-method link_pay_token is required when merchant-account-id is provided',
+              'merchant-account-id requires credential-type link_pay_token (or the legacy execution-method link_pay_token)',
           });
         }
         if (!merchantAccountId) {

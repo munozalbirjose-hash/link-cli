@@ -263,6 +263,7 @@ type SpendRequest struct {
 	Context              *string                    `json:"context,omitempty"`
 	Amount               *int64                     `json:"amount,omitempty"`
 	Currency             *string                    `json:"currency,omitempty"`
+	FormattedAmount      *string                    `json:"formatted_amount,omitempty"`
 	LineItems            []LineItem                 `json:"line_items,omitempty"`
 	Totals               []Total                    `json:"totals,omitempty"`
 	PaymentMethod        *string                    `json:"payment_method,omitempty"`

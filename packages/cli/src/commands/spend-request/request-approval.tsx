@@ -9,6 +9,7 @@ import Spinner from 'ink-spinner';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { DISPLAY_DELAY_MS } from '../../utils/constants';
+import { displayAmount } from '../../utils/format-amount';
 import { formatRecurring } from '../../utils/format-recurring';
 import { openUrl } from '../../utils/open-url';
 import { ApprovalWaitingView } from './approval-waiting-view';
@@ -218,9 +219,11 @@ export const RequestApproval: React.FC<RequestApprovalProps> = ({
           <Text>
             Amount:{' '}
             <Text bold>
-              {result?.amount != null
-                ? `${result.amount} ${result.currency?.toUpperCase() ?? ''}`.trim()
-                : 'N/A'}
+              {displayAmount(
+                result?.formatted_amount,
+                result?.amount,
+                result?.currency,
+              ) ?? 'N/A'}
             </Text>
           </Text>
           {result?.recurring && (

@@ -8,7 +8,7 @@ import Spinner from 'ink-spinner';
 import type React from 'react';
 import { useCallback } from 'react';
 import { useAsyncAction } from '../../hooks/use-async-action';
-import { formatAmount } from '../../utils/format-amount';
+import { displayAmount } from '../../utils/format-amount';
 
 interface CatalogSearchProps {
   repository: IUcpResource;
@@ -27,24 +27,44 @@ interface CatalogRow {
 
 const TITLE_MAX_WIDTH = 30;
 
-function formatPrice(price?: number, currency?: string): string {
-  if (price == null) return '';
-  return formatAmount(price, currency ?? 'usd');
+// Price sources in precedence order: the flat (legacy/demo) sale price and
+// price, then the first variant's price, then the grouped first_variant_price.
+function priceText(product: UcpSearchResult['data'][number]): string {
+  const firstVariant = product.variants?.[0];
+  const sources = [
+    {
+      formatted: product.formatted_sale_price,
+      amount: product.sale_price,
+      currency: product.currency,
+    },
+    {
+      formatted: product.formatted_price,
+      amount: product.price,
+      currency: product.currency,
+    },
+    {
+      formatted: firstVariant?.price?.formatted_amount,
+      amount: firstVariant?.price?.amount,
+      currency: firstVariant?.price?.currency,
+    },
+    {
+      formatted: product.first_variant_price?.formatted_amount,
+      amount: product.first_variant_price?.amount,
+      currency: product.first_variant_price?.currency,
+    },
+  ];
+  const source = sources.find((s) => s.formatted || s.amount != null);
+  return (
+    (source &&
+      displayAmount(source.formatted, source.amount, source.currency)) ??
+    ''
+  );
 }
 
 function toRow(product: UcpSearchResult['data'][number]): CatalogRow {
   const firstVariant = product.variants?.[0];
   const sku = product.sku ?? product.sku_id ?? firstVariant?.merchant_sku;
   const title = product.title ?? product.name ?? firstVariant?.title;
-  const priceAmount =
-    product.sale_price ??
-    product.price ??
-    firstVariant?.price?.amount ??
-    product.first_variant_price?.amount;
-  const priceCurrency =
-    product.currency ??
-    firstVariant?.price?.currency ??
-    product.first_variant_price?.currency;
   const availability =
     product.availability ?? firstVariant?.availability?.status;
   const business = product.profile_id ?? firstVariant?.profile_id;
@@ -52,7 +72,7 @@ function toRow(product: UcpSearchResult['data'][number]): CatalogRow {
   return {
     sku: sku ?? '—',
     title: title ?? '—',
-    price: formatPrice(priceAmount, priceCurrency) || '—',
+    price: priceText(product) || '—',
     availability: availability ?? '—',
     merchant: merchant ?? '—',
     business: business ?? '—',

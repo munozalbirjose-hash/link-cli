@@ -5,6 +5,7 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { DISPLAY_DELAY_MS } from '../../utils/constants';
 import { writeCredentialFile } from '../../utils/credential-output';
+import { displayAmount } from '../../utils/format-amount';
 import { formatRecurring } from '../../utils/format-recurring';
 import { shouldPollSpendRequest } from '../../utils/should-poll-spend-request';
 
@@ -357,7 +358,11 @@ export const RetrieveSpendRequest: React.FC<RetrieveSpendRequestProps> = ({
           <Text>
             Amount:{' '}
             <Text bold>
-              {request?.amount != null ? String(request.amount) : 'N/A'}
+              {displayAmount(
+                request?.formatted_amount,
+                request?.amount,
+                request?.currency,
+              ) ?? 'N/A'}
             </Text>
           </Text>
           <Text>
@@ -384,7 +389,11 @@ export const RetrieveSpendRequest: React.FC<RetrieveSpendRequestProps> = ({
         <Text>
           Amount:{' '}
           <Text bold>
-            {request?.amount != null ? String(request.amount) : 'N/A'}
+            {displayAmount(
+              request?.formatted_amount,
+              request?.amount,
+              request?.currency,
+            ) ?? 'N/A'}
           </Text>
         </Text>
         {request?.recurring && (

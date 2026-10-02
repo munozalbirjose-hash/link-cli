@@ -15,7 +15,7 @@ import {
   RESUME_TIMEOUT_MS,
 } from '../../utils/constants';
 import { writeCredentialFile } from '../../utils/credential-output';
-import { formatAmount } from '../../utils/format-amount';
+import { displayAmount } from '../../utils/format-amount';
 import { formatRecurring } from '../../utils/format-recurring';
 import { openUrl } from '../../utils/open-url';
 import { sanitizeDeep } from '../../utils/sanitize-text';
@@ -416,12 +416,11 @@ export const CreateSpendRequest: React.FC<CreateSpendRequestProps> = ({
               <Text>
                 Amount:{' '}
                 <Text bold>
-                  {duplicateRequest.amount != null
-                    ? formatAmount(
-                        duplicateRequest.amount,
-                        duplicateRequest.currency ?? '',
-                      )
-                    : 'N/A'}
+                  {displayAmount(
+                    duplicateRequest.formatted_amount,
+                    duplicateRequest.amount,
+                    duplicateRequest.currency,
+                  ) ?? 'N/A'}
                 </Text>
               </Text>
               <Text>
@@ -460,9 +459,11 @@ export const CreateSpendRequest: React.FC<CreateSpendRequestProps> = ({
           <Text>
             Amount:{' '}
             <Text bold>
-              {request?.amount != null
-                ? formatAmount(request.amount, request.currency ?? '')
-                : 'N/A'}
+              {displayAmount(
+                request?.formatted_amount,
+                request?.amount,
+                request?.currency,
+              ) ?? 'N/A'}
             </Text>
           </Text>
           {request?.recurring && (

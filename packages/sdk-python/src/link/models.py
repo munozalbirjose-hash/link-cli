@@ -139,6 +139,7 @@ class SpendRequest(LinkModel):
     context: str | None = None
     amount: int | None = None
     currency: str | None = None
+    formatted_amount: str | None = None
     line_items: list[LineItem] | None = None
     totals: list[Total] | None = None
     payment_method: str | None = None

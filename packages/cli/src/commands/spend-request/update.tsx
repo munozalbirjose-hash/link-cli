@@ -8,6 +8,7 @@ import Spinner from 'ink-spinner';
 import type React from 'react';
 import { useCallback, useState } from 'react';
 import { useAsyncAction } from '../../hooks/use-async-action';
+import { displayAmount } from '../../utils/format-amount';
 import { openUrl } from '../../utils/open-url';
 import {
   pollUntilSpendRequestUpdate,
@@ -108,7 +109,14 @@ export const UpdateSpendRequest: React.FC<UpdateSpendRequestProps> = ({
             ID: <Text bold>{request?.id}</Text>
           </Text>
           <Text>
-            Amount: <Text bold>{request?.amount ?? 'N/A'}</Text>
+            Amount:{' '}
+            <Text bold>
+              {displayAmount(
+                request?.formatted_amount,
+                request?.amount,
+                request?.currency,
+              ) ?? 'N/A'}
+            </Text>
           </Text>
         </Box>
       </Box>
@@ -128,7 +136,11 @@ export const UpdateSpendRequest: React.FC<UpdateSpendRequestProps> = ({
         <Text>
           Amount:{' '}
           <Text bold>
-            {request?.amount !== undefined ? String(request.amount) : 'N/A'}
+            {displayAmount(
+              request?.formatted_amount,
+              request?.amount,
+              request?.currency,
+            ) ?? 'N/A'}
           </Text>
         </Text>
         <Text>

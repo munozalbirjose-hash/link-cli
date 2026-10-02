@@ -145,6 +145,8 @@ export interface SpendRequest {
   context?: string;
   amount?: number;
   currency?: string;
+  /** Server-formatted display string for `amount` (e.g. `¥1,000`). Display only. */
+  formatted_amount?: string;
   line_items?: LineItem[];
   totals?: Total[];
   payment_method?: string;
@@ -419,6 +421,16 @@ export interface WebBotAuthBlock {
 }
 
 /**
+ * A minor-unit price. `formatted_amount` is the server-formatted display
+ * string (e.g. `¥1,000`); use `amount` for anything other than display.
+ */
+export interface UcpPrice {
+  amount?: number;
+  currency?: string;
+  formatted_amount?: string;
+}
+
+/**
  * A single purchasable variant nested under a `UcpProduct`. Real catalog
  * search responses group results by product and put the fields needed to
  * check out (`profile_id`, `merchant_sku`, `price`) on each variant rather
@@ -428,7 +440,8 @@ export interface UcpProductVariant {
   merchant_sku?: string;
   profile_id?: string;
   merchant_name?: string;
-  price?: { amount?: number; currency?: string };
+  price?: UcpPrice;
+  sale_price?: UcpPrice;
   availability?: { status?: string };
   title?: string;
   [key: string]: unknown;
@@ -454,6 +467,9 @@ export interface UcpProduct {
   price?: number;
   sale_price?: number;
   currency?: string;
+  /** Server-formatted display strings for `price` / `sale_price`. */
+  formatted_price?: string;
+  formatted_sale_price?: string;
   availability?: string;
   product_category?: string;
   condition?: string;
@@ -468,7 +484,7 @@ export interface UcpProduct {
   item_group_id?: string;
   item_group_title?: string;
   variants?: UcpProductVariant[];
-  first_variant_price?: { amount?: number; currency?: string };
+  first_variant_price?: UcpPrice;
   /** Legacy/alias fields from the checkout PR's demo shape. */
   sku_id?: string;
   name?: string;
@@ -502,6 +518,13 @@ export interface UcpCheckout {
   currency?: string | null;
   amount_total?: number | null;
   amount_subtotal?: number | null;
+  /** Server-formatted display strings for `amount_total` / `amount_subtotal`. */
+  formatted_amount_total?: string | null;
+  formatted_amount_subtotal?: string | null;
+  /**
+   * Includes `amount_fulfillment` and its server-formatted
+   * `formatted_amount_fulfillment`.
+   */
   total_details?: Record<string, unknown> | null;
   line_item_details?: unknown;
   fulfillment_details?: Record<string, unknown> | null;

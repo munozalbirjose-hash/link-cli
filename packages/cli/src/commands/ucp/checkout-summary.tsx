@@ -1,15 +1,7 @@
 import type { UcpCheckout } from '@stripe/link-sdk';
 import { Box, Text } from 'ink';
 import type React from 'react';
-import { formatAmount } from '../../utils/format-amount';
-
-function formatOptionalAmount(
-  amount?: number | null,
-  currency?: string | null,
-): string {
-  if (amount == null) return 'N/A';
-  return formatAmount(amount, currency ?? 'usd');
-}
+import { displayAmount } from '../../utils/format-amount';
 
 interface CheckoutSummaryProps {
   checkout: UcpCheckout;
@@ -19,14 +11,32 @@ interface CheckoutSummaryProps {
 export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
   checkout,
 }) => {
-  const shipping = (checkout.total_details as { amount_shipping?: number })
-    ?.amount_shipping;
+  const totalDetails = checkout.total_details as
+    | { amount_fulfillment?: number; formatted_amount_fulfillment?: string }
+    | null
+    | undefined;
+  const total = displayAmount(
+    checkout.formatted_amount_total,
+    checkout.amount_total,
+    checkout.currency,
+  );
+  const subtotal = displayAmount(
+    checkout.formatted_amount_subtotal,
+    checkout.amount_subtotal,
+    checkout.currency,
+  );
+  const shipping = displayAmount(
+    totalDetails?.formatted_amount_fulfillment,
+    totalDetails?.amount_fulfillment,
+    checkout.currency,
+  );
   const orderStatus = (checkout.order_details as { status?: string })?.status;
   const lineItems = Array.isArray(checkout.line_item_details)
     ? (checkout.line_item_details as Array<{
         sku_id?: string;
         quantity?: number;
-        amount_total?: number;
+        amount_subtotal?: number;
+        formatted_amount_subtotal?: string;
       }>)
     : [];
 
@@ -46,27 +56,27 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
           </Text>
         </Text>
       )}
-      {checkout.amount_total != null && (
+      {total && (
         <Text>
           Total:{' '}
           <Text bold color="white">
-            {formatOptionalAmount(checkout.amount_total, checkout.currency)}
+            {total}
           </Text>
         </Text>
       )}
-      {checkout.amount_subtotal != null && (
+      {subtotal && (
         <Text>
           Subtotal:{' '}
           <Text bold color="white">
-            {formatOptionalAmount(checkout.amount_subtotal, checkout.currency)}
+            {subtotal}
           </Text>
         </Text>
       )}
-      {shipping != null && (
+      {shipping && (
         <Text>
           Shipping:{' '}
           <Text bold color="white">
-            {formatOptionalAmount(shipping, checkout.currency)}
+            {shipping}
           </Text>
         </Text>
       )}
@@ -75,15 +85,20 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
           <Text bold color="white">
             Line Items:
           </Text>
-          {lineItems.map((item, index) => (
-            <Text key={item.sku_id ?? String(index)}>
-              {'  '}
-              {item.sku_id ?? '—'} ×{item.quantity ?? 1}
-              {item.amount_total != null
-                ? `  ${formatOptionalAmount(item.amount_total, checkout.currency)}`
-                : ''}
-            </Text>
-          ))}
+          {lineItems.map((item, index) => {
+            const itemAmount = displayAmount(
+              item.formatted_amount_subtotal,
+              item.amount_subtotal,
+              checkout.currency,
+            );
+            return (
+              <Text key={item.sku_id ?? String(index)}>
+                {'  '}
+                {item.sku_id ?? '—'} ×{item.quantity ?? 1}
+                {itemAmount ? `  ${itemAmount}` : ''}
+              </Text>
+            );
+          })}
         </Box>
       )}
       {orderStatus && (

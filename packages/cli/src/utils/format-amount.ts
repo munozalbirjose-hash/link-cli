@@ -19,3 +19,20 @@ export function formatAmount(amount: number, currency: string): string {
     return `${amount} ${currency}`;
   }
 }
+
+/**
+ * Pick the display text for a server-returned amount. Prefers the server's
+ * `formatted_*` string; otherwise shows the raw minor-unit amount and currency
+ * code (e.g. "1000 JPY") rather than guessing the currency's exponent.
+ *
+ * Returns undefined when there is no amount to show.
+ */
+export function displayAmount(
+  formatted: string | null | undefined,
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+): string | undefined {
+  if (formatted) return formatted;
+  if (amount == null) return undefined;
+  return `${amount} ${(currency ?? '').toUpperCase()}`.trim();
+}

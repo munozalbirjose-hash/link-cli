@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAmount } from '../format-amount';
+import { displayAmount, formatAmount } from '../format-amount';
 
 describe('formatAmount', () => {
   it.each([
@@ -18,5 +18,22 @@ describe('formatAmount', () => {
 
   it('falls back to the raw amount for unknown currency codes', () => {
     expect(formatAmount(1234, 'zz')).toBe('1234 zz');
+  });
+});
+
+describe('displayAmount', () => {
+  it('prefers the server-formatted string', () => {
+    expect(displayAmount('¥1,000', 1000, 'jpy')).toBe('¥1,000');
+  });
+
+  it('falls back to the raw minor-unit amount and currency code', () => {
+    expect(displayAmount(undefined, 1000, 'jpy')).toBe('1000 JPY');
+    expect(displayAmount(null, 0, 'usd')).toBe('0 USD');
+    expect(displayAmount('', 500, null)).toBe('500');
+  });
+
+  it('returns undefined when there is no amount', () => {
+    expect(displayAmount(undefined, undefined, 'usd')).toBeUndefined();
+    expect(displayAmount(null, null, null)).toBeUndefined();
   });
 });

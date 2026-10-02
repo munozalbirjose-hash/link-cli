@@ -462,6 +462,7 @@ DOM-derived `merchant_account_id`, and Link supplies their canonical merchant
 identity.
 
 **Constraints:** `context` must be at least 100 characters; `amount` must not exceed 50000 (cents); `currency` must be a 3-letter ISO code. The user has 30 minutes from when approval is requested to approve. Approved credentials (card or SPT) are valid for 12 hours from spend request creation.
+**Amount display:** `amount` is an integer in the currency's smallest unit. When present, `formatted_amount` is the server-formatted display string (for example, `¥1,000` or `$12.34`); use it only for display and pass the integer `amount` to commands.
 **Test mode:** Pass `--test` to create a testmode SpendRequest. A testmode SpendRequest will return test payment credentials (e.g test card `4000009990001984`) rather than a real payment credential. Testmode SpendRequests will not charge the underlying payment method of the SpendRequest. This is useful for development and integration testing without real payment methods.
 
 ```bash

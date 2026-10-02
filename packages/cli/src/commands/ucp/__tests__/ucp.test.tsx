@@ -34,6 +34,8 @@ describe('ucp catalog search component', () => {
           price: 12000,
           sale_price: 9900,
           currency: 'usd',
+          formatted_price: '$120.00',
+          formatted_sale_price: '$99.00',
           availability: 'in_stock',
           profile_id: 'np_demo_footwear',
           merchant_name: 'Demo Footwear Co',
@@ -71,7 +73,14 @@ describe('ucp catalog search component', () => {
   it('falls back to sku_id/name when a product uses the legacy demo shape', async () => {
     const repo = makeResource({
       searchCatalog: vi.fn(async () => ({
-        data: [{ sku_id: 'sku_legacy', name: 'Legacy Item', price: 2500 }],
+        data: [
+          {
+            sku_id: 'sku_legacy',
+            name: 'Legacy Item',
+            price: 2500,
+            formatted_price: '$25.00',
+          },
+        ],
         total_count: 1,
       })),
     });
@@ -100,14 +109,22 @@ describe('ucp catalog search component', () => {
             id: 'CJPB158377701AZ',
             name: 'Breathable Running Shoes',
             brand: 'Poemusart',
-            first_variant_price: { amount: 50, currency: 'usd' },
+            first_variant_price: {
+              amount: 50,
+              currency: 'usd',
+              formatted_amount: '$0.50',
+            },
             variants: [
               {
                 merchant_sku: 'CJPB158377701AZ',
                 merchant_name: 'Poemusart Inc.',
                 profile_id:
                   'profile_61UnURSooufCZI1dNA6UnURR8PSQ9lq8RrWwUUOkq64m',
-                price: { amount: 50, currency: 'usd' },
+                price: {
+                  amount: 50,
+                  currency: 'usd',
+                  formatted_amount: '$0.50',
+                },
                 availability: { status: 'in_stock' },
               },
             ],
@@ -138,11 +155,17 @@ describe('ucp catalog search component', () => {
     });
   });
 
-  it('formats prices in the product currency using its minor-unit exponent', async () => {
+  it('shows server-formatted prices verbatim and falls back to the raw amount', async () => {
     const repo = makeResource({
       searchCatalog: vi.fn(async () => ({
         data: [
-          { sku: 'sku_jpy', title: 'Yen Item', price: 1000, currency: 'jpy' },
+          {
+            sku: 'sku_jpy',
+            title: 'Yen Item',
+            price: 1000,
+            currency: 'jpy',
+            formatted_price: '¥1,000',
+          },
           { sku: 'sku_kwd', title: 'Dinar Item', price: 1000, currency: 'kwd' },
         ],
         total_count: 2,
@@ -160,9 +183,9 @@ describe('ucp catalog search component', () => {
     await vi.waitFor(() => {
       const frame = lastFrame();
       expect(frame).toContain('¥1,000');
-      expect(frame).toContain('KWD');
-      expect(frame).toContain('1.000');
-      expect(frame).not.toContain('$10.00');
+      // No formatted_price: show the raw minor-unit amount, not a guess.
+      expect(frame).toContain('1000 KWD');
+      expect(frame).not.toContain('$');
     });
   });
 
@@ -215,8 +238,20 @@ describe('ucp checkout create component', () => {
       currency: 'usd',
       amount_total: 5500,
       amount_subtotal: 5000,
-      total_details: { amount_shipping: 500 },
-      line_item_details: [{ sku_id: 'sku_1', quantity: 2, amount_total: 5000 }],
+      formatted_amount_total: '$55.00',
+      formatted_amount_subtotal: '$50.00',
+      total_details: {
+        amount_fulfillment: 500,
+        formatted_amount_fulfillment: '$5.00',
+      },
+      line_item_details: [
+        {
+          sku_id: 'sku_1',
+          quantity: 2,
+          amount_subtotal: 5000,
+          formatted_amount_subtotal: '$50.00',
+        },
+      ],
       expires_at: 1_800_000_000,
     };
     const repo = makeResource({ createCheckout: vi.fn(async () => checkout) });
@@ -237,8 +272,10 @@ describe('ucp checkout create component', () => {
       expect(frame).toContain('Checkout created');
       expect(frame).toContain('dcs_1');
       expect(frame).toContain('open');
-      expect(frame).toContain('$55.00');
-      expect(frame).toContain('$5.00'); // shipping
+      expect(frame).toContain('Total: $55.00');
+      expect(frame).toContain('Subtotal: $50.00');
+      expect(frame).toContain('Shipping: $5.00');
+      expect(frame).toContain('sku_1 ×2  $50.00');
       expect(frame).toContain('spend-request create');
       expect(frame).toContain('--credential-type shared_payment_token');
       expect(frame).toContain('--network-id np_1');
@@ -250,15 +287,15 @@ describe('ucp checkout create component', () => {
     });
   });
 
-  it('formats session amounts in the checkout currency', async () => {
+  it('falls back to raw amounts when the server omits formatted strings', async () => {
     const checkout: UcpCheckout = {
       id: 'dcs_jpy',
       status: 'open',
       currency: 'jpy',
       amount_total: 5500,
       amount_subtotal: 5000,
-      total_details: { amount_shipping: 500 },
-      line_item_details: [{ sku_id: 'sku_1', quantity: 1, amount_total: 5000 }],
+      total_details: { amount_fulfillment: 500 },
+      line_item_details: [{ sku_id: 'sku_1', quantity: 1, amount_subtotal: 5000 }],
     };
     const repo = makeResource({ createCheckout: vi.fn(async () => checkout) });
 
@@ -275,9 +312,10 @@ describe('ucp checkout create component', () => {
 
     await vi.waitFor(() => {
       const frame = lastFrame();
-      expect(frame).toContain('¥5,500');
-      expect(frame).toContain('¥5,000');
-      expect(frame).toContain('¥500');
+      expect(frame).toContain('Total: 5500 JPY');
+      expect(frame).toContain('Subtotal: 5000 JPY');
+      expect(frame).toContain('Shipping: 500 JPY');
+      expect(frame).toContain('sku_1 ×1  5000 JPY');
       expect(frame).not.toContain('$');
     });
   });

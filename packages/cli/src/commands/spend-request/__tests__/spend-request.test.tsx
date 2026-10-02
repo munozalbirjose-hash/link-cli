@@ -7,6 +7,7 @@ import { render } from 'ink-testing-library';
 import { describe, expect, it, vi } from 'vitest';
 import { sanitizeResource } from '../../../utils/resource-factory';
 import { CreateSpendRequest } from '../create';
+import { SpendRequestList } from '../list';
 import { RequestApproval } from '../request-approval';
 import { RetrieveSpendRequest } from '../retrieve';
 import { UpdateSpendRequest } from '../update';
@@ -1138,6 +1139,55 @@ describe('spend-request', () => {
         expect(frame).not.toContain('\x1b[2J');
         expect(frame).not.toContain('\r');
       });
+    });
+  });
+});
+
+describe('spend-request amount display', () => {
+  it('RetrieveSpendRequest shows the server formatted_amount verbatim', async () => {
+    const repo = makeMockRepo(
+      makeSpendRequest({
+        amount: 1000,
+        currency: 'jpy',
+        formatted_amount: '¥1,000',
+      }),
+    );
+
+    const { lastFrame } = render(
+      <RetrieveSpendRequest
+        repository={repo}
+        id="sr_test"
+        onComplete={() => {}}
+      />,
+    );
+
+    await vi.waitFor(() => {
+      expect(lastFrame()).toMatch(/Amount:\s+¥1,000/);
+    });
+  });
+
+  it('SpendRequestList falls back to the raw amount without formatted_amount', async () => {
+    const repo = sanitizeResource({
+      list: vi.fn(async () => [
+        makeSpendRequest({
+          id: 'sr_fmt',
+          amount: 1234,
+          currency: 'eur',
+          formatted_amount: '€12.34',
+        }),
+        makeSpendRequest({ id: 'sr_raw', amount: 1000, currency: 'jpy' }),
+      ]),
+    } as unknown as ISpendRequestResource);
+
+    const { lastFrame } = render(
+      <SpendRequestList repository={repo} onComplete={() => {}} />,
+    );
+
+    await vi.waitFor(() => {
+      const frame = lastFrame();
+      expect(frame).toContain('€12.34');
+      expect(frame).toContain('1000 JPY');
+      expect(frame).not.toContain('$');
     });
   });
 });

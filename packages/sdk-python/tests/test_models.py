@@ -23,6 +23,7 @@ def test_spend_request_full_response() -> None:
         "context": "purchase",
         "amount": 2599,
         "currency": "usd",
+        "formatted_amount": "$25.99",
         "line_items": [
             {
                 "name": "item",

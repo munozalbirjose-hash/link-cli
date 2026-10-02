@@ -390,6 +390,14 @@ func TestWebBotAuthCachesByAuthority(t *testing.T) {
 	}
 }
 
+func TestSpendRequestDecodesFormattedAmount(t *testing.T) {
+	var request SpendRequest
+	assertNoError(t, json.Unmarshal([]byte(`{"id":"sr_1","status":"created","amount":1000,"currency":"jpy","formatted_amount":"¥1,000","created_at":"","updated_at":""}`), &request))
+	if request.FormattedAmount == nil || *request.FormattedAmount != "¥1,000" {
+		t.Fatalf("got %#v", request.FormattedAmount)
+	}
+}
+
 func TestGetDuplicateSpendRequest(t *testing.T) {
 	details := map[string]any{
 		"error": map[string]any{

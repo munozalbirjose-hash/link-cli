@@ -457,7 +457,7 @@ A spend request moves through: **create** → **request approval** → **approve
 `context`, and `amount`. `payment_method_id` is optional — if omitted,
 your default payment method will be used, or the first eligible one if no
 default is set. Shared Payment Token requests instead require `network_id`;
-Link Pay Token requests require `execution_method=link_pay_token` and the
+Link Pay Token requests require `credential_type=link_pay_token` and the
 DOM-derived `merchant_account_id`, and Link supplies their canonical merchant
 identity.
 

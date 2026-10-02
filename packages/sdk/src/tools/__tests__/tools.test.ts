@@ -118,15 +118,22 @@ describe('Link tools', () => {
         merchant_account_id: 'acct_one',
       }).success,
     ).toBe(true);
-    expect(
-      linkToolSchemas.createSpendRequest.safeParse({
-        amount: 1000,
-        context: purchase.context,
-        credential_type: 'link_pay_token',
-        execution_method: 'link_pay_token',
-        merchant_account_id: 'acct_one',
-      }).success,
-    ).toBe(false);
+    const combinedLpt = linkToolSchemas.createSpendRequest.safeParse({
+      amount: 1000,
+      context: purchase.context,
+      credential_type: 'link_pay_token',
+      execution_method: 'link_pay_token',
+      merchant_account_id: 'acct_one',
+    });
+    expect(combinedLpt.success).toBe(false);
+    expect(combinedLpt.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ['execution_method'],
+        message: expect.stringContaining(
+          'cannot be combined with credential_type: link_pay_token',
+        ),
+      }),
+    ]);
     expect(
       linkToolSchemas.createSpendRequest.safeParse({
         ...purchase,

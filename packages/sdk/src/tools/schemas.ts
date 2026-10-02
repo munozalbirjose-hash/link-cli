@@ -122,7 +122,14 @@ export const linkToolSchemas = {
       const legacyLptExecution = value.execution_method === 'link_pay_token';
       const lptRequest = newLptCredential || legacyLptExecution;
 
-      if (lptRequest) {
+      if (newLptCredential && legacyLptExecution) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['execution_method'],
+          message:
+            'execution_method cannot be combined with credential_type: link_pay_token; omit execution_method.',
+        });
+      } else if (lptRequest) {
         const hasValidLptShape = newLptCredential
           ? !legacyLptExecution
           : value.credential_type === 'card';

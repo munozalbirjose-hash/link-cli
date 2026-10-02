@@ -27,6 +27,11 @@ def valid(client: Client) -> None:
         metadata=MappingProxyType({"order": "123"}),
     )
     assert_type(result, SpendRequest)
+    client.spend_requests.create(
+        context="Purchase",
+        credential_type="link_pay_token",
+        merchant_account_id="acct_1",
+    )
     assert_type(client.payment_methods.list(), list[PaymentMethod])
     assert_type(
         client.payment_methods.update("pd_1", nickname=""), PaymentMethod

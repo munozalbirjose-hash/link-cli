@@ -5,7 +5,7 @@ Link CLI lets agents get secure, one-time-use payment credentials from a Link wa
 The CLI can produce one of three credential types:
 
 - A virtual card (PAN) for use with a standard web checkout form. The issued card works anywhere, and is not restricted to Link-enabled sellers or sellers that use Stripe.
-- A Link Pay Token (LPT) for use with a Stripe hosted payment form. Stripe checkout pages use WebMCP to allow agents to complete the checkout.
+- A Link Pay Token (LPT) for use on supported Stripe payment surfaces. Stripe checkout pages use WebMCP to allow agents to complete the checkout.
 - A [Shared Payment Token](https://docs.stripe.com/agentic-commerce/concepts/shared-payment-tokens) (SPT) for use when the seller accepts programmatic payments through [Machine Payment Protocols](https://mpp.dev) (MPP)
 
 For now, this is only available to US and Canadian Link accounts.
@@ -489,7 +489,7 @@ non-zero with `POLLING_TIMEOUT`.
 
 ### Credential types
 
-By default, a spend request provisions a virtual card. Link can also provide a shared payment token (SPT) for use with the Machine Payment Protocol (MPP) or a Link Pay Token (LPT) for supported Stripe hosted checkout forms. LPT is a distinct credential type.
+By default, a spend request provisions a virtual card. Link can also provide a shared payment token (SPT) for use with the Machine Payment Protocol (MPP) or a Link Pay Token (LPT) for supported Stripe payment surfaces. LPT is a distinct credential type.
 
 ### Shared Payment Token
 
@@ -514,7 +514,7 @@ link-cli mpp pay https://climate.stripe.dev/api/contribute \
 
 ### Link Pay Token
 
-Some Stripe checkout pages expose an AI-agent steering block that supports a
+Some Stripe payment surfaces expose an AI-agent steering block that supports a
 Link Pay Token (LPT). Inspect the checkout in a browser before creating the
 SpendRequest: enable the agent checkbox, then verify that both
 `input[name="link_pay_token"]` and

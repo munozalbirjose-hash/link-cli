@@ -32,7 +32,7 @@ Use [Link](https://link.com) to get secure, one-time-use payment credentials fro
 The CLI can produce three credential types:
 - A virtual card (PAN) for use with a standard web checkout form. The issued card works anywhere.
 - A Shared Payment Token (SPT) when the seller is in the Stripe Network and accepts payments programmatically (for example with Machine Payment Protocols).
-- A Link Pay Token (LPT) for a supported Stripe hosted checkout surface.
+- A Link Pay Token (LPT) for a supported Stripe payment surface.
 
 ## Installing
 

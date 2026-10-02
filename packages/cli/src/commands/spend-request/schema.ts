@@ -16,7 +16,7 @@ export const createOptions = z.object({
     .enum(['shared_payment_token', 'card', 'link_pay_token'])
     .default('card')
     .describe(
-      '"card" for checkout forms, "link_pay_token" for supported Stripe hosted checkout, or "shared_payment_token" for HTTP 402/machine payment flows',
+      '"card" for checkout forms, "link_pay_token" for supported Stripe payment surfaces, or "shared_payment_token" for HTTP 402/machine payment flows',
     ),
   networkId: z
     .string()

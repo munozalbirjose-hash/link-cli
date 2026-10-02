@@ -58,7 +58,7 @@ describe('ucp catalog search component', () => {
       expect(frame).toContain('BUSINESS');
       expect(frame).toContain('sku_1');
       // sale_price is preferred over price.
-      expect(frame).toContain('$99.00 USD');
+      expect(frame).toContain('$99.00');
       expect(frame).toContain('in_stock');
       // profile_id is surfaced as the business so the agent can create a checkout.
       expect(frame).toContain('np_demo_footwear');
@@ -88,7 +88,7 @@ describe('ucp catalog search component', () => {
       const frame = lastFrame();
       expect(frame).toContain('sku_legacy');
       expect(frame).toContain('Legacy Item');
-      expect(frame).toContain('$25.00 USD');
+      expect(frame).toContain('$25.00');
     });
   });
 
@@ -129,12 +129,40 @@ describe('ucp catalog search component', () => {
       const frame = lastFrame();
       expect(frame).toContain('CJPB158377701AZ');
       expect(frame).toContain('Breathable Running Shoes');
-      expect(frame).toContain('$0.50 USD');
+      expect(frame).toContain('$0.50');
       expect(frame).toContain('in_stock');
       expect(frame).toContain(
         'profile_61UnURSooufCZI1dNA6UnURR8PSQ9lq8RrWwUUOkq64m',
       );
       expect(frame).toContain('Poemusart Inc.');
+    });
+  });
+
+  it('formats prices in the product currency using its minor-unit exponent', async () => {
+    const repo = makeResource({
+      searchCatalog: vi.fn(async () => ({
+        data: [
+          { sku: 'sku_jpy', title: 'Yen Item', price: 1000, currency: 'jpy' },
+          { sku: 'sku_kwd', title: 'Dinar Item', price: 1000, currency: 'kwd' },
+        ],
+        total_count: 2,
+      })),
+    });
+
+    const { lastFrame } = render(
+      <CatalogSearch
+        repository={repo}
+        params={{ query: 'currency' }}
+        onComplete={() => {}}
+      />,
+    );
+
+    await vi.waitFor(() => {
+      const frame = lastFrame();
+      expect(frame).toContain('¥1,000');
+      expect(frame).toContain('KWD');
+      expect(frame).toContain('1.000');
+      expect(frame).not.toContain('$10.00');
     });
   });
 
@@ -209,8 +237,8 @@ describe('ucp checkout create component', () => {
       expect(frame).toContain('Checkout created');
       expect(frame).toContain('dcs_1');
       expect(frame).toContain('open');
-      expect(frame).toContain('$55.00 USD');
-      expect(frame).toContain('$5.00 USD'); // shipping
+      expect(frame).toContain('$55.00');
+      expect(frame).toContain('$5.00'); // shipping
       expect(frame).toContain('spend-request create');
       expect(frame).toContain('--credential-type shared_payment_token');
       expect(frame).toContain('--network-id np_1');
@@ -219,6 +247,38 @@ describe('ucp checkout create component', () => {
       expect(frame).toContain('ucp checkout complete dcs_1');
       expect(frame).toContain('--spend-request-id <SPEND_REQUEST_ID>');
       expect(frame).toContain('--business np_1');
+    });
+  });
+
+  it('formats session amounts in the checkout currency', async () => {
+    const checkout: UcpCheckout = {
+      id: 'dcs_jpy',
+      status: 'open',
+      currency: 'jpy',
+      amount_total: 5500,
+      amount_subtotal: 5000,
+      total_details: { amount_shipping: 500 },
+      line_item_details: [{ sku_id: 'sku_1', quantity: 1, amount_total: 5000 }],
+    };
+    const repo = makeResource({ createCheckout: vi.fn(async () => checkout) });
+
+    const { lastFrame } = render(
+      <CheckoutCreate
+        repository={repo}
+        params={{
+          profile_id: 'np_1',
+          line_items: [{ sku_id: 'sku_1', quantity: 1 }],
+        }}
+        onComplete={() => {}}
+      />,
+    );
+
+    await vi.waitFor(() => {
+      const frame = lastFrame();
+      expect(frame).toContain('¥5,500');
+      expect(frame).toContain('¥5,000');
+      expect(frame).toContain('¥500');
+      expect(frame).not.toContain('$');
     });
   });
 });

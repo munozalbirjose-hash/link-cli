@@ -1,13 +1,14 @@
 import type { UcpCheckout } from '@stripe/link-sdk';
 import { Box, Text } from 'ink';
 import type React from 'react';
+import { formatAmount } from '../../utils/format-amount';
 
-function formatAmount(
+function formatOptionalAmount(
   amount?: number | null,
   currency?: string | null,
 ): string {
   if (amount == null) return 'N/A';
-  return `$${(amount / 100).toFixed(2)} ${(currency ?? 'usd').toUpperCase()}`;
+  return formatAmount(amount, currency ?? 'usd');
 }
 
 interface CheckoutSummaryProps {
@@ -49,7 +50,7 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
         <Text>
           Total:{' '}
           <Text bold color="white">
-            {formatAmount(checkout.amount_total, checkout.currency)}
+            {formatOptionalAmount(checkout.amount_total, checkout.currency)}
           </Text>
         </Text>
       )}
@@ -57,7 +58,7 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
         <Text>
           Subtotal:{' '}
           <Text bold color="white">
-            {formatAmount(checkout.amount_subtotal, checkout.currency)}
+            {formatOptionalAmount(checkout.amount_subtotal, checkout.currency)}
           </Text>
         </Text>
       )}
@@ -65,7 +66,7 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
         <Text>
           Shipping:{' '}
           <Text bold color="white">
-            {formatAmount(shipping, checkout.currency)}
+            {formatOptionalAmount(shipping, checkout.currency)}
           </Text>
         </Text>
       )}
@@ -79,7 +80,7 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
               {'  '}
               {item.sku_id ?? '—'} ×{item.quantity ?? 1}
               {item.amount_total != null
-                ? `  ${formatAmount(item.amount_total, checkout.currency)}`
+                ? `  ${formatOptionalAmount(item.amount_total, checkout.currency)}`
                 : ''}
             </Text>
           ))}

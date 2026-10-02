@@ -4,6 +4,7 @@ import Spinner from 'ink-spinner';
 import type React from 'react';
 import { useCallback } from 'react';
 import { useAsyncAction } from '../../hooks/use-async-action';
+import { formatAmount } from '../../utils/format-amount';
 
 interface SpendRequestListProps {
   repository: ISpendRequestResource;
@@ -81,7 +82,7 @@ export const SpendRequestList: React.FC<SpendRequestListProps> = ({
                 : 'white';
           const amount =
             sr.amount != null
-              ? `$${(sr.amount / 100).toFixed(2)} ${(sr.currency ?? 'usd').toUpperCase()}`
+              ? formatAmount(sr.amount, sr.currency ?? 'usd')
               : '';
           return (
             <Box key={sr.id} paddingX={2}>

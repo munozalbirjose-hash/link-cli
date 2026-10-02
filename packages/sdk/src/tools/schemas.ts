@@ -72,9 +72,7 @@ export const linkToolSchemas = {
       credential_type: z
         .enum(['card', 'shared_payment_token', 'link_pay_token'])
         .default('card')
-        .describe(
-          'Use link_pay_token for supported hosted checkout when the backend rollout flag is enabled.',
-        ),
+        .describe('Use link_pay_token for supported hosted checkout.'),
       network_id: id.optional().describe('Required for shared payment tokens.'),
       execution_method: z
         .literal('link_pay_token')

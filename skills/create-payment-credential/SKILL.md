@@ -286,9 +286,8 @@ following steps in the frame that contains it.
      --total "type:total,display_text:Total,amount:<cents>"
    ```
 
-   `link_pay_token` requires the backend rollout flag for the consumer. During
-   migration, use `--execution-method link_pay_token` with the default `card`
-   credential type if the new credential type is not enabled. Do not set
+   During migration, the legacy form (`--execution-method link_pay_token` with
+   the default `card` credential type) remains accepted. Do not set
    `--network-id` or `--test` for either LPT request form. Present the approval
    URL and wait for approval before retrieving a token.
 

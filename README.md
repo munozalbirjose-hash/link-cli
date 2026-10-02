@@ -535,8 +535,7 @@ link-cli spend-request create \
   --request-approval
 ```
 
-The `link_pay_token` credential type requires the backend rollout flag for the
-consumer. During migration, the legacy request form remains available:
+During migration, the legacy request form remains available:
 
 ```bash
 link-cli spend-request create \

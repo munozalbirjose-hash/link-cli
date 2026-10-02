@@ -24,12 +24,6 @@ export const createOptions = z.object({
     .describe(
       'Network ID (required for shared_payment_token) — use `link-cli mpp decode` to extract',
     ),
-  executionMethod: z
-    .enum(['link_pay_token'])
-    .optional()
-    .describe(
-      'Legacy Link Pay Token request form. Prefer --credential-type link_pay_token with the checkout-provided merchant-account-id',
-    ),
   merchantAccountId: z
     .string()
     .optional()

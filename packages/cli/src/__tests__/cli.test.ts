@@ -538,43 +538,7 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
       expect(request.network_id).toBe('net_prod_abc');
     });
 
-    it('sends Link Pay Token execution fields in HTTP POST body', async () => {
-      setNextResponse(200, {
-        ...BASE_REQUEST,
-        merchant_name: 'Canonical Merchant',
-        merchant_url: 'https://canonical.example',
-      });
-
-      const result = await runProdCli(
-        'spend-request',
-        'create',
-        '--payment-method-id',
-        'pd_prod_test',
-        '--execution-method',
-        'link_pay_token',
-        '--merchant-account-id',
-        'acct_lpt_target',
-        '--context',
-        VALID_CONTEXT,
-        '--amount',
-        '5000',
-        '--no-request-approval',
-        '--json',
-      );
-
-      expect(result.exitCode).toBe(0);
-      const sentBody = JSON.parse(lastRequest.body);
-      expect(sentBody).toMatchObject({
-        payment_details: 'pd_prod_test',
-        credential_type: 'card',
-        execution_method: 'link_pay_token',
-        merchant_account_id: 'acct_lpt_target',
-      });
-      expect(sentBody.merchant_name).toBeUndefined();
-      expect(sentBody.merchant_url).toBeUndefined();
-    });
-
-    it('sends the Link Pay Token credential type without legacy execution fields', async () => {
+    it('sends the Link Pay Token credential type in HTTP POST body', async () => {
       setNextResponse(200, {
         ...BASE_REQUEST,
         credential_type: 'link_pay_token',
@@ -606,7 +570,8 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
         credential_type: 'link_pay_token',
         merchant_account_id: 'acct_lpt_target',
       });
-      expect(sentBody.execution_method).toBeUndefined();
+      expect(sentBody.merchant_name).toBeUndefined();
+      expect(sentBody.merchant_url).toBeUndefined();
       expect(JSON.parse(result.stdout)[0].credential_type).toBe(
         'link_pay_token',
       );
@@ -618,7 +583,7 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
         status: 'approved',
         merchant_name: 'Canonical Merchant',
         merchant_url: 'https://canonical.example',
-        execution_method: 'link_pay_token',
+        credential_type: 'link_pay_token',
         merchant_account_id: 'acct_lpt_target',
       });
 
@@ -629,7 +594,7 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
         'pd_prod_test',
         '--idempotency-key',
         'delegated-key',
-        '--execution-method',
+        '--credential-type',
         'link_pay_token',
         '--merchant-account-id',
         'acct_lpt_target',
@@ -650,8 +615,7 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
       expect(sentBody).toMatchObject({
         idempotency_key: 'delegated-key',
         payment_details: 'pd_prod_test',
-        credential_type: 'card',
-        execution_method: 'link_pay_token',
+        credential_type: 'link_pay_token',
         merchant_account_id: 'acct_lpt_target',
       });
       expect(sentBody.approve).toBeUndefined();
@@ -672,7 +636,7 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
         'create',
         '--payment-method-id',
         'pd_prod_test',
-        '--execution-method',
+        '--credential-type',
         'link_pay_token',
         '--merchant-account-id',
         'acct_lpt_target',
@@ -691,95 +655,58 @@ describe('production mode', { timeout: CLI_TIMEOUT_MS + 5_000 }, () => {
       expect(requests).toHaveLength(0);
     });
 
+    const LPT_ARGS = [
+      '--credential-type',
+      'link_pay_token',
+      '--merchant-account-id',
+      'acct_lpt_target',
+    ];
     const invalidLptCreateCases = [
       {
-        name: 'merchant-account-id without a Link Pay Token shape',
+        name: 'merchant-account-id without credential-type link_pay_token',
         args: ['--merchant-account-id', 'acct_lpt_target'],
-        message:
-          'merchant-account-id requires credential-type link_pay_token (or the legacy execution-method link_pay_token)',
+        message: 'merchant-account-id requires credential-type link_pay_token',
       },
       {
-        name: 'new credential type without merchant-account-id',
+        name: 'no merchant-account-id',
         args: ['--credential-type', 'link_pay_token'],
         message:
           'merchant-account-id is required when credential-type is link_pay_token',
       },
       {
-        name: 'new credential type combined with legacy execution-method',
-        args: [
-          '--credential-type',
-          'link_pay_token',
-          '--execution-method',
-          'link_pay_token',
-          '--merchant-account-id',
-          'acct_lpt_target',
-        ],
-        message:
-          'execution-method cannot be combined with credential-type link_pay_token',
-      },
-      {
-        name: 'execution-method without merchant-account-id',
-        args: ['--execution-method', 'link_pay_token'],
-        message:
-          'merchant-account-id is required when execution-method is link_pay_token',
-      },
-      {
         name: 'blank merchant-account-id',
         args: [
-          '--execution-method',
+          '--credential-type',
           'link_pay_token',
           '--merchant-account-id',
           '   ',
         ],
         message:
-          'merchant-account-id is required when execution-method is link_pay_token',
-      },
-      {
-        name: 'shared_payment_token credential type',
-        args: [
-          '--execution-method',
-          'link_pay_token',
-          '--merchant-account-id',
-          'acct_lpt_target',
-          '--credential-type',
-          'shared_payment_token',
-        ],
-        message:
-          'credential-type must be card when execution-method is link_pay_token',
+          'merchant-account-id is required when credential-type is link_pay_token',
       },
       {
         name: 'network-id',
-        args: [
-          '--execution-method',
-          'link_pay_token',
-          '--merchant-account-id',
-          'acct_lpt_target',
-          '--network-id',
-          'net_lpt_target',
-        ],
+        args: [...LPT_ARGS, '--network-id', 'net_lpt_target'],
         message: 'network-id cannot be used with Link Pay Token',
       },
       {
         name: 'test mode',
-        args: [
-          '--execution-method',
-          'link_pay_token',
-          '--merchant-account-id',
-          'acct_lpt_target',
-          '--test',
-        ],
+        args: [...LPT_ARGS, '--test'],
         message: 'test cannot be used with Link Pay Token',
       },
       {
-        name: 'agent-provided merchant identity',
+        name: 'the removed execution-method flag',
         args: [
           '--execution-method',
           'link_pay_token',
           '--merchant-account-id',
           'acct_lpt_target',
-          '--merchant-name',
-          'Agent-provided Merchant',
         ],
+        message: 'Unknown flag: --execution-method',
+      },
+      {
+        name: 'agent-provided merchant identity',
+        args: [...LPT_ARGS, '--merchant-name', 'Agent-provided Merchant'],
         message:
           'merchant-name and merchant-url cannot be used with Link Pay Token',
       },

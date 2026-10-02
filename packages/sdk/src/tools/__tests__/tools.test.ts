@@ -95,55 +95,31 @@ describe('Link tools', () => {
   });
 
   it('enforces Link Pay Token targeting without exposing delegated approval', () => {
-    expect(
-      linkToolSchemas.createSpendRequest.safeParse({
-        ...purchase,
-        execution_method: 'link_pay_token',
-        merchant_account_id: 'acct_one',
-      }).success,
-    ).toBe(false);
-    expect(
-      linkToolSchemas.createSpendRequest.safeParse({
-        amount: 1000,
-        context: purchase.context,
-        execution_method: 'link_pay_token',
-        merchant_account_id: 'acct_one',
-      }).success,
-    ).toBe(true);
-    expect(
-      linkToolSchemas.createSpendRequest.safeParse({
-        amount: 1000,
-        context: purchase.context,
-        credential_type: 'link_pay_token',
-        merchant_account_id: 'acct_one',
-      }).success,
-    ).toBe(true);
-    const combinedLpt = linkToolSchemas.createSpendRequest.safeParse({
+    const lpt = {
       amount: 1000,
       context: purchase.context,
       credential_type: 'link_pay_token',
-      execution_method: 'link_pay_token',
       merchant_account_id: 'acct_one',
-    });
-    expect(combinedLpt.success).toBe(false);
-    expect(combinedLpt.error?.issues).toEqual([
-      expect.objectContaining({
-        path: ['execution_method'],
-        message: expect.stringContaining(
-          'cannot be combined with credential_type: link_pay_token',
-        ),
-      }),
-    ]);
+    };
+    const parse = (input: object) =>
+      linkToolSchemas.createSpendRequest.safeParse(input).success;
+
+    expect(parse(lpt)).toBe(true);
+    expect(parse({ ...lpt, merchant_account_id: undefined })).toBe(false);
+    expect(parse({ ...lpt, merchant_name: 'Shop' })).toBe(false);
+    expect(parse({ ...lpt, test: true })).toBe(false);
+    expect(parse({ ...lpt, execution_method: 'link_pay_token' })).toBe(false);
+    expect(parse({ ...purchase, merchant_account_id: 'acct_one' })).toBe(false);
     expect(
-      linkToolSchemas.createSpendRequest.safeParse({
+      parse({
         ...purchase,
         approval_details: { approval_method: 'programmatic' },
-      }).success,
+      }),
     ).toBe(false);
     expect(
       linkToolSchemas.updateSpendRequest.safeParse({
         id: 'lsrq_one',
-        execution_method: 'link_pay_token',
+        merchant_account_id: 'acct_one',
       }).success,
     ).toBe(false);
   });
@@ -166,7 +142,6 @@ describe('Link tools', () => {
       credential_type: 'link_pay_token',
       merchant_account_id: 'acct_one',
     });
-    expect(body).not.toHaveProperty('execution_method');
   });
 
   it('maps retrieve includes and update IDs without putting IDs in the body', async () => {

@@ -46,7 +46,6 @@ AuthenticationMethod: TypeAlias = Literal[
     "biometric_fingerprint",
     "passkey",
 ]
-ExecutionMethod: TypeAlias = Literal["link_pay_token"]
 PaymentOutcome: TypeAlias = Literal["success", "failure"]
 AgentWalletVerificationStatus: TypeAlias = Literal[
     "not_required",

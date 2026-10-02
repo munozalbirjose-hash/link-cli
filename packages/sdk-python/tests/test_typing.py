@@ -22,7 +22,6 @@ def valid(client: Client) -> None:
     result = client.spend_requests.create(
         context="The user requested this purchase.",
         credential_type="card",
-        execution_method="link_pay_token",
         line_items=(item,),
         metadata=MappingProxyType({"order": "123"}),
     )
@@ -75,7 +74,6 @@ async def valid_async(client: AsyncClient) -> None:
     # `str` would otherwise mask misspelled values from consumers' type checkers.
     invalid_calls = [
         'client.spend_requests.create(context="Purchase", credential_type="typo")',
-        'client.spend_requests.create(context="Purchase", execution_method="typo")',
         'client.transactions.list(origin="typo")',
         (
             'client.reports.create(domain="example.com", outcome="typo", '

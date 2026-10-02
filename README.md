@@ -535,18 +535,6 @@ link-cli spend-request create \
   --request-approval
 ```
 
-During migration, the legacy request form remains available:
-
-```bash
-link-cli spend-request create \
-  --payment-method-id csmrpd_xxx \
-  --execution-method link_pay_token \
-  --merchant-account-id acct_... \
-  --context "Purchasing an item from the checkout the agent inspected. The user initiated this purchase through the shopping assistant." \
-  --amount 3500 \
-  --request-approval
-```
-
 LPT requests do not support `--test`, `--network-id`, merchant name, or merchant
 URL. After approval, retrieve `--include link_pay_token` immediately before
 using it on the same checkout surface. Each returned LPT is valid for up to 30
